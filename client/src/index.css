@@ -217,3 +217,48 @@ button:active { transform: scale(.98); }
 .daily-quote { display: flex; align-items: flex-start; gap: 8px; max-width: 600px; margin-top: 12px; padding: 10px 12px; color: var(--berry); background: rgba(255,250,247,.62); border: 1px solid var(--line); border-radius: 10px; }daily-quote svg { color: var(--gold); flex: 0 0 auto; margin-top: 2px; }daily-quote div { display: grid; gap: 3px; }daily-quote strong { font-family: Georgia, serif; font-size: 12px; font-weight: 500; line-height: 1.35; }daily-quote span { color: var(--muted); font-size: 9px; }dark-mode .daily-quote { background: #30232d; color: #f5dcdc; border-color: #513745; }companion-layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(280px, .75fr); gap: 18px; align-items: start; }chat-panel { padding: 0; overflow: hidden; }chat-head { display: flex; align-items: center; gap: 10px; padding: 18px 21px; border-bottom: 1px solid var(--line); }mira-avatar { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 13px 13px 13px 5px; color: white; background: var(--berry); font-family: Georgia, serif; font-size: 20px; }chat-head > div:nth-child(2) { display: grid; gap: 3px; flex: 1; }chat-head strong { color: var(--berry-deep); font-family: Georgia, serif; font-size: 16px; }chat-head span { color: var(--muted); font-size: 9px; }chat-head .online-dot { color: var(--sage); font-size: 9px; }chat-head .online-dot::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--sage); margin-right: 5px; }chat-messages { min-height: 340px; padding: 22px; display: grid; align-content: end; gap: 12px; background: linear-gradient(180deg, var(--paper), #f9f0eb); }dark-mode .chat-messages { background: linear-gradient(180deg, #28202a, #211921); }chat-bubble { max-width: 72%; padding: 11px 13px; border-radius: 14px 14px 14px 4px; color: var(--ink); background: var(--cream); font-size: 11px; line-height: 1.5; }chat-bubble.you { justify-self: end; border-radius: 14px 14px 4px 14px; color: white; background: var(--berry); }quick-prompts { display: flex; flex-wrap: wrap; gap: 7px; padding: 13px 21px; border-top: 1px solid var(--line); }quick-prompts button { color: var(--rose); background: var(--rose-soft); border-radius: 20px; padding: 7px 9px; font-size: 9px; cursor: pointer; }chat-compose { display: flex; gap: 8px; padding: 14px 21px 18px; border-top: 1px solid var(--line); }chat-compose input { flex: 1; min-width: 0; height: 40px; padding: 0 12px; color: var(--ink); background: var(--cream); border: 1px solid var(--line); border-radius: 9px; font-size: 11px; }chat-compose button { width: 40px; height: 40px; display: grid; place-items: center; color: white; background: var(--berry); border-radius: 9px; cursor: pointer; }companion-note { padding: 25px; background: var(--berry); color: #fff; min-height: 265px; }companion-note .eyebrow { color: #e8b8b2; margin-top: 19px; }companion-note h3 { max-width: 240px; color: #fff; font-family: Georgia, serif; font-size: 24px; font-weight: 500; line-height: 1.1; margin: 7px 0 12px; }companion-note p { max-width: 250px; color: #e1caca; font-size: 11px; line-height: 1.55; }mira-values { display: grid; gap: 9px; margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,.16); }mira-values span { display: flex; align-items: center; gap: 7px; color: #f0c887; font-size: 10px; }exercise-plan { margin-top: 18px; }exercise-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }exercise-grid > div { padding: 14px; background: var(--cream); border: 1px solid var(--line); border-radius: 12px; }exercise-grid strong, .exercise-grid span, .exercise-grid small { display: block; }exercise-grid strong { color: var(--gold); text-transform: uppercase; font-size: 8px; letter-spacing: 1px; }exercise-grid span { color: var(--berry); font-family: Georgia, serif; font-size: 15px; margin: 7px 0; }exercise-grid small { color: var(--muted); font-size: 9px; line-height: 1.45; }dark-mode .exercise-grid > div { background: #30232d; }dark-mode .chat-head strong, .dark-mode .exercise-grid span { color: #f5dcdc; }
 @media (max-width: 860px) { .companion-layout { grid-template-columns: 1fr; } .exercise-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 560px) { .daily-quote { max-width: 100%; }exercise-grid { grid-template-columns: 1fr; }chat-messages { min-height: 300px; } }
+
+
+/* Current enhancement styles — intentionally scoped to preserve the polished dashboard system */
+.daily-quote { display: flex; align-items: flex-start; gap: 8px; max-width: 600px; margin-top: 12px; padding: 10px 12px; color: var(--berry); background: rgba(255,250,247,.62); border: 1px solid var(--line); border-radius: 10px; }
+.daily-quote svg { color: var(--gold); flex: 0 0 auto; margin-top: 2px; }
+.daily-quote div { display: grid; gap: 3px; }
+.daily-quote strong { font-family: Georgia, serif; font-size: 12px; font-weight: 500; line-height: 1.35; }
+.daily-quote span { color: var(--muted); font-size: 9px; }
+.dark-mode .daily-quote { background: #30232d; color: #f5dcdc; border-color: #513745; }
+.companion-layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(280px, .75fr); gap: 18px; align-items: start; }
+.chat-panel { padding: 0; overflow: hidden; }
+.chat-head { display: flex; align-items: center; gap: 10px; padding: 18px 21px; border-bottom: 1px solid var(--line); }
+.mira-avatar { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 13px 13px 13px 5px; color: white; background: var(--berry); font-family: Georgia, serif; font-size: 20px; }
+.chat-head > div:nth-child(2) { display: grid; gap: 3px; flex: 1; }
+.chat-head strong { color: var(--berry-deep); font-family: Georgia, serif; font-size: 16px; }
+.chat-head span { color: var(--muted); font-size: 9px; }
+.chat-head .online-dot { color: var(--sage); font-size: 9px; }
+.chat-head .online-dot::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--sage); margin-right: 5px; }
+.chat-messages { min-height: 340px; padding: 22px; display: grid; align-content: end; gap: 12px; background: linear-gradient(180deg, var(--paper), #f9f0eb); }
+.dark-mode .chat-messages { background: linear-gradient(180deg, #28202a, #211921); }
+.chat-bubble { max-width: 72%; padding: 11px 13px; border-radius: 14px 14px 14px 4px; color: var(--ink); background: var(--cream); font-size: 11px; line-height: 1.5; }
+.chat-bubble.you { justify-self: end; border-radius: 14px 14px 4px 14px; color: white; background: var(--berry); }
+.quick-prompts { display: flex; flex-wrap: wrap; gap: 7px; padding: 13px 21px; border-top: 1px solid var(--line); }
+.quick-prompts button { color: var(--rose); background: var(--rose-soft); border-radius: 20px; padding: 7px 9px; font-size: 9px; cursor: pointer; }
+.chat-compose { display: flex; gap: 8px; padding: 14px 21px 18px; border-top: 1px solid var(--line); }
+.chat-compose input { flex: 1; min-width: 0; height: 40px; padding: 0 12px; color: var(--ink); background: var(--cream); border: 1px solid var(--line); border-radius: 9px; font-size: 11px; }
+.chat-compose button { width: 40px; height: 40px; display: grid; place-items: center; color: white; background: var(--berry); border-radius: 9px; cursor: pointer; }
+.companion-note { padding: 25px; background: var(--berry); color: #fff; min-height: 265px; }
+.companion-note .eyebrow { color: #e8b8b2; margin-top: 19px; }
+.companion-note h3 { max-width: 240px; color: #fff; font-family: Georgia, serif; font-size: 24px; font-weight: 500; line-height: 1.1; margin: 7px 0 12px; }
+.companion-note p { max-width: 250px; color: #e1caca; font-size: 11px; line-height: 1.55; }
+.mira-values { display: grid; gap: 9px; margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,.16); }
+.mira-values span { display: flex; align-items: center; gap: 7px; color: #f0c887; font-size: 10px; }
+.exercise-plan { margin-top: 18px; }
+.exercise-preferences { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 17px; }
+.exercise-choice { min-height: 88px; padding: 12px; text-align: left; color: var(--muted); background: var(--cream); border: 1px solid var(--line); border-radius: 11px; cursor: pointer; transition: border .18s ease, background .18s ease, transform .18s ease; }
+.exercise-choice strong, .exercise-choice span { display: block; }
+.exercise-choice strong { color: var(--berry); font-family: Georgia, serif; font-size: 14px; margin-bottom: 7px; }
+.exercise-choice span { font-size: 9px; line-height: 1.4; }
+.exercise-choice.selected { color: var(--berry); background: var(--rose-soft); border-color: var(--rose); box-shadow: 0 5px 14px rgba(109,46,70,.1); }
+.dark-mode .exercise-choice { background: #30232d; border-color: #513745; }
+.dark-mode .exercise-choice strong { color: #f7dddd; }
+.dark-mode .exercise-choice.selected { background: #543445; border-color: #d08b86; }
+@media (max-width: 860px) { .companion-layout { grid-template-columns: 1fr; } .exercise-preferences { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .daily-quote { max-width: 100%; } .exercise-preferences { grid-template-columns: 1fr; } .chat-messages { min-height: 300px; } }
