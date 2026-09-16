@@ -9,7 +9,6 @@ import {
   Check,
   ChevronRight,
   CircleHelp,
-  ClipboardList,
   Download,
   Droplets,
   Dumbbell,
@@ -80,7 +79,6 @@ type RiskInput = {
 const navItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "companion", label: "Talk to Mira", icon: MessageCircle },
-  { id: "intake", label: "Guided intake", icon: ClipboardList },
   { id: "cycle", label: "Cycle log", icon: CalendarDays },
   { id: "risk", label: "Risk assessment", icon: Activity },
   { id: "forecast", label: "Forecast", icon: TrendingUp },
@@ -348,7 +346,6 @@ export default function Home() {
         {savedMessage && <div className="toast"><Check size={16} />{savedMessage}</div>}
 
         <div className="page-content">
-          {activePage === "intake" && <GuidedIntake goTo={goTo} />}
           {activePage === "companion" && <Companion logs={logs} />}
           {activePage === "dashboard" && <Dashboard quote={dailyQuote} goTo={goTo} riskResult={riskResult} lastLog={lastLog} forecast={forecast} chart={dashboardChart} logs={logs} greeting={timeWelcome.title} greetingCopy={timeWelcome.copy} dateLabel={dateLabel} />}
           {activePage === "cycle" && <CycleLog logForm={logForm} setLogForm={setLogForm} toggleSymptom={toggleSymptom} saveLog={saveLog} logs={logs} />}
@@ -360,25 +357,6 @@ export default function Home() {
       </main>
     </div>
   );
-}
-
-function GuidedIntake({ goTo }: { goTo: (page: string) => void }) {
-  const [step, setStep] = useState(1);
-  const steps = ["Basics", "Lifestyle & mood", "Menstrual health", "Symptoms & history", "Your plan"];
-  const stepCopy = [
-    { title: "Start with the basics", copy: "A few foundational details help personalize your experience.", fields: ["Age", "Height & weight", "Location / timezone", "What would you like support with?"] },
-    { title: "Tell us about your lifestyle", copy: "Your everyday rhythm matters just as much as your cycle.", fields: ["Sleep quality", "Movement frequency", "Food routine", "Stress & mood today"] },
-    { title: "Map your menstrual health", copy: "There is no perfect cycle. Honest information helps us spot patterns.", fields: ["Last period start date", "Typical cycle length", "Cycle regularity", "Flow & period pain"] },
-    { title: "Add symptoms & family history", copy: "Share only what feels comfortable. You can edit this later.", fields: ["Acne / facial hair", "Hair loss / skin changes", "Weight changes", "Family history of PCOS"] },
-    { title: "Your starting plan is ready", copy: "We will use these signals to shape your dashboard and PCOS risk awareness estimate.", fields: ["Cycle tracking", "PCOS risk rate estimate", "Nutrition & mood support", "Appointment summary"] },
-  ];
-  const current = stepCopy[step - 1];
-  return <><SectionHeader eyebrow={`Step ${step} of ${steps.length} · Your private setup`} title={current.title} description={current.copy} action={<div className="method-chip"><ShieldCheck size={15} /> You can change this later</div>} />
-    <div className="intake-layout"><div className="panel intake-panel"><div className="intake-progress">{steps.map((item, index) => <button type="button" key={item} className={`intake-step ${index + 1 <= step ? "done" : ""} ${index + 1 === step ? "current" : ""}`} onClick={() => setStep(index + 1)}><span>{index + 1 <= step ? <Check size={13} /> : index + 1}</span><strong>{item}</strong></button>)}</div><div className="intake-form-grid">{step === 1 && <><label className="intake-field"><span>Age</span><input type="number" min="13" max="80" defaultValue="24" /></label><label className="intake-field"><span>Height</span><div className="inline-input"><input type="number" min="100" max="220" defaultValue="162" /><small>cm</small></div></label><label className="intake-field"><span>Weight</span><div className="inline-input"><input type="number" min="30" max="250" defaultValue="67" /><small>kg</small></div></label><label className="intake-field"><span>Main goal</span><select defaultValue="understand"><option value="understand">Understand my patterns</option><option value="cycle">Track my cycle</option><option value="symptoms">Understand symptoms</option><option value="nutrition">Improve nutrition</option><option value="appointment">Prepare for an appointment</option></select></label></>}
-{step === 2 && <><label className="intake-field"><span>Sleep quality</span><select defaultValue="okay"><option value="great">Great — I wake refreshed</option><option value="okay">Okay — could be better</option><option value="poor">Poor — often restless</option><option value="very-poor">Very poor — hard to sleep</option></select></label><label className="intake-field"><span>Movement routine</span><select defaultValue="sometimes"><option value="rarely">Rarely or never</option><option value="sometimes">1–2 days a week</option><option value="regular">3–4 days a week</option><option value="active">5+ days a week</option></select></label><label className="intake-field"><span>Food preference</span><select defaultValue="vegetarian"><option value="vegetarian">Indian vegetarian</option><option value="vegan">Vegan</option><option value="nonveg">Non-vegetarian</option><option value="eggetarian">Eggetarian</option><option value="jain">Jain vegetarian</option></select></label><label className="intake-field"><span>Stress level today <strong className="range-value">5/10</strong></span><input type="range" min="1" max="10" defaultValue="5" /></label></>}
-{step === 3 && <><label className="intake-field"><span>Last period started</span><input type="date" defaultValue="2026-08-18" /></label><label className="intake-field"><span>Typical cycle length</span><div className="inline-input"><input type="number" min="18" max="60" defaultValue="34" /><small>days</small></div></label><label className="intake-field"><span>Cycle regularity</span><select defaultValue="somewhat"><option value="regular">Mostly regular</option><option value="somewhat">Sometimes early or late</option><option value="irregular">Very irregular</option><option value="unknown">Still learning my pattern</option></select></label><label className="intake-field"><span>Period pain</span><select defaultValue="mild"><option value="none">None</option><option value="mild">Mild</option><option value="moderate">Moderate</option><option value="severe">Severe</option></select></label></>}
-{step === 4 && <><fieldset className="intake-field intake-wide"><legend>Symptoms you notice</legend><div className="intake-check-grid">{["Acne", "Facial hair growth", "Hair thinning", "Skin darkening", "Weight changes", "Bloating", "Fatigue", "Mood changes"].map((symptom) => <label key={symptom}><input type="checkbox" defaultChecked={["Fatigue", "Bloating"].includes(symptom)} />{symptom}</label>)}</div></fieldset><label className="intake-field"><span>Family history of PCOS</span><select defaultValue="no"><option value="no">No known family history</option><option value="yes">Yes, a close relative</option><option value="unsure">I’m not sure</option></select></label><label className="intake-field"><span>Medical support right now</span><select defaultValue="none"><option value="none">Not currently</option><option value="doctor">I’m seeing a doctor</option><option value="planning">I’m planning an appointment</option></select></label></>}
-{step === 5 && <><div className="intake-summary"><Sparkles size={18} /><div><strong>Your FemCare starting plan</strong><p>We’ll use your answers to shape your dashboard, estimated PCOS risk rate, cycle forecast, nutrition ideas, and gentle movement suggestions.</p></div></div><label className="intake-field"><span>How would you like Mira to support you?</span><select defaultValue="warm"><option value="warm">Warm encouragement</option><option value="direct">Clear and practical</option><option value="quiet">Mostly listen while I rant</option><option value="balanced">A mix of all three</option></select></label><label className="intake-field"><span>Reminder preference</span><select defaultValue="daily"><option value="daily">A gentle daily check-in</option><option value="weekly">A weekly reflection</option><option value="none">I’ll check in when I need to</option></select></label></>}</div><div className="intake-actions"><button className="soft-button" type="button" disabled={step === 1} onClick={() => setStep((value) => value - 1)}>Back</button>{step < steps.length ? <button className="primary-button" type="button" onClick={() => setStep((value) => value + 1)}>Continue <ChevronRight size={16} /></button> : <button className="primary-button" type="button" onClick={() => goTo("dashboard")}>Open my dashboard <ArrowUpRight size={16} /></button>}</div></div><div className="intake-side"><div className="panel motivation-card"><div className="motivation-spark"><Sparkles size={17} /></div><div className="eyebrow">A note for you</div><h3>You deserve care that feels personal.</h3><p>There is no “good” or “bad” answer here. This is a starting point, not a test.</p><span>One step at a time · You’ve got this</span></div><div className="panel intake-checklist"><div className="eyebrow">What we’ll personalize</div>{["Dashboard snapshot", "Estimated PCOS risk rate", "Cycle forecast", "Nutrition support", "Printable health summary"].map((item) => <div key={item}><Check size={14} />{item}</div>)}</div></div></div></>;
 }
 
 function Companion({ logs }: { logs: LogEntry[] }) {
