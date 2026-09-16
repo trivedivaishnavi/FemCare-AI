@@ -32,6 +32,8 @@ import {
   UserRound,
   X,
   Zap,
+  MessageCircle,
+  Send,
 } from "lucide-react";
 import {
   Area,
@@ -77,6 +79,7 @@ type RiskInput = {
 
 const navItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "companion", label: "Talk to Mira", icon: MessageCircle },
   { id: "intake", label: "Guided intake", icon: ClipboardList },
   { id: "cycle", label: "Cycle log", icon: CalendarDays },
   { id: "risk", label: "Risk assessment", icon: Activity },
@@ -174,13 +177,14 @@ function formatDate(date: string) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(`${date}T12:00:00`));
 }
 
-function SectionHeader({ eyebrow, title, description, action }: { eyebrow: string; title: string; description: string; action?: React.ReactNode }) {
+function SectionHeader({ eyebrow, title, description, quote, action }: { eyebrow: string; title: string; description: string; quote?: { text: string; by: string }; action?: React.ReactNode }) {
   return (
     <div className="section-header">
       <div>
         <div className="eyebrow">{eyebrow}</div>
         <h1>{title}</h1>
         <p>{description}</p>
+        {quote && <div className="daily-quote"><Sparkles size={14} /><div><strong>“{quote.text}”</strong><span>{quote.by}</span></div></div>}
       </div>
       {action}
     </div>
@@ -215,6 +219,20 @@ function ChartTooltip({ active, payload, label }: any) {
   return <div className="chart-tooltip"><strong>{label}</strong><span>{payload[0].value} days</span></div>;
 }
 
+const dailyQuotes = [
+  { text: "You are allowed to be a work in progress and still be worthy of tenderness.", by: "Mira’s note for today" },
+  { text: "Your body is not a problem to solve. She is a home to listen to.", by: "A gentle reminder" },
+  { text: "Even on the days you feel behind, you are still becoming someone beautiful.", by: "For your softer days" },
+  { text: "You do not have to earn rest, care, love, or a fresh start.", by: "Mira’s note for today" },
+  { text: "The way you keep showing up — quietly, imperfectly, honestly — is brave.", by: "For the girlies figuring it out" },
+  { text: "You are more than a number, a symptom, a cycle, or a difficult day.", by: "A little truth for today" },
+  { text: "Let today be small and kind. Small and kind still counts as moving forward.", by: "Mira’s note for today" },
+];
+
+function getDailyQuote(date: Date) {
+  return dailyQuotes[Math.floor(date.getTime() / 86400000) % dailyQuotes.length];
+}
+
 function getTimeWelcome(hour: number) {
   if (hour < 5) return { title: "Hey, late-night girlie", copy: "The world can wait. A little rest and a little self-kindness are enough for tonight." };
   if (hour < 12) return { title: "Good morning, Vaishnavi", copy: "A clearer view of your rhythm starts here. Here's your latest health snapshot." };
@@ -245,6 +263,7 @@ export default function Home() {
   const indiaHour = Number(new Intl.DateTimeFormat("en-US", { hour: "2-digit", hour12: false, timeZone: "Asia/Kolkata" }).format(today));
   const timeWelcome = getTimeWelcome(indiaHour);
   const dateLabel = formatToday(today);
+  const dailyQuote = getDailyQuote(today);
   const [logForm, setLogForm] = useState({ date: indiaDateInputValue(today), cycleLength: "33", mood: "7", symptoms: ["Fatigue"], sleep: "7.5", exercise: "2–3 days", flow: "Moderate" });
 
   const forecast = useMemo(() => {
@@ -330,7 +349,8 @@ export default function Home() {
 
         <div className="page-content">
           {activePage === "intake" && <GuidedIntake goTo={goTo} />}
-          {activePage === "dashboard" && <Dashboard goTo={goTo} riskResult={riskResult} lastLog={lastLog} forecast={forecast} chart={dashboardChart} logs={logs} greeting={timeWelcome.title} greetingCopy={timeWelcome.copy} dateLabel={dateLabel} />}
+          {activePage === "companion" && <Companion />}
+          {activePage === "dashboard" && <Dashboard quote={dailyQuote} goTo={goTo} riskResult={riskResult} lastLog={lastLog} forecast={forecast} chart={dashboardChart} logs={logs} greeting={timeWelcome.title} greetingCopy={timeWelcome.copy} dateLabel={dateLabel} />}
           {activePage === "cycle" && <CycleLog logForm={logForm} setLogForm={setLogForm} toggleSymptom={toggleSymptom} saveLog={saveLog} logs={logs} />}
           {activePage === "risk" && <RiskAssessment riskInput={riskInput} updateRisk={updateRisk} assessRisk={assessRisk} riskResult={riskResult} />}
           {activePage === "forecast" && <Forecast forecast={forecast} logs={logs} />}
@@ -357,9 +377,17 @@ function GuidedIntake({ goTo }: { goTo: (page: string) => void }) {
     <div className="intake-layout"><div className="panel intake-panel"><div className="intake-progress">{steps.map((item, index) => <button type="button" key={item} className={`intake-step ${index + 1 <= step ? "done" : ""} ${index + 1 === step ? "current" : ""}`} onClick={() => setStep(index + 1)}><span>{index + 1 <= step ? <Check size={13} /> : index + 1}</span><strong>{item}</strong></button>)}</div><div className="intake-form-grid">{current.fields.map((field, index) => <label className="intake-field" key={field}><span>{field}</span>{index === 0 && step === 3 ? <input type="date" defaultValue="2026-08-18" /> : index === 1 && step === 3 ? <input type="number" defaultValue="34" /> : <select defaultValue=""><option value="" disabled>Select an option</option><option>Not sure yet</option><option>Sometimes</option><option>Often</option><option>Very often</option></select>}</label>)}</div><div className="intake-actions"><button className="soft-button" type="button" disabled={step === 1} onClick={() => setStep((value) => value - 1)}>Back</button>{step < steps.length ? <button className="primary-button" type="button" onClick={() => setStep((value) => value + 1)}>Continue <ChevronRight size={16} /></button> : <button className="primary-button" type="button" onClick={() => goTo("dashboard")}>Open my dashboard <ArrowUpRight size={16} /></button>}</div></div><div className="intake-side"><div className="panel motivation-card"><div className="motivation-spark"><Sparkles size={17} /></div><div className="eyebrow">A note for you</div><h3>You deserve care that feels personal.</h3><p>There is no “good” or “bad” answer here. This is a starting point, not a test.</p><span>One step at a time · You’ve got this</span></div><div className="panel intake-checklist"><div className="eyebrow">What we’ll personalize</div>{["Dashboard snapshot", "Estimated PCOS risk rate", "Cycle forecast", "Nutrition support", "Printable health summary"].map((item) => <div key={item}><Check size={14} />{item}</div>)}</div></div></div></>;
 }
 
-function Dashboard({ goTo, riskResult, lastLog, forecast, chart, logs, greeting, greetingCopy, dateLabel }: { goTo: (page: string) => void; riskResult: ReturnType<typeof calculateRisk>; lastLog: LogEntry; forecast: { average: number; irregular: boolean }; chart: { month: string; days: number }[]; logs: LogEntry[]; greeting: string; greetingCopy: string; dateLabel: string }) {
+function Companion() {
+  const [messages, setMessages] = useState([{ from: "mira", text: "Hey girlie, I’m Mira. You can rant here — no fixing, no judgment, no pretending you’re fine. What’s sitting heavy today?" }]);
+  const [input, setInput] = useState("");
+  const replies = ["I hear you. You don’t have to make this sound smaller for me.", "That sounds like a lot to carry. Let’s take one tiny, kind next step — or just breathe here for a minute.", "You are not being dramatic. Your feelings are information, and you deserve support with them.", "I’m proud of you for saying it out loud. You’re allowed to want care, softness, and answers."];
+  const sendMessage = (text = input) => { if (!text.trim()) return; setMessages((current) => [...current, { from: "you", text: text.trim() }, { from: "mira", text: replies[current.length % replies.length] }]); setInput(""); };
+  return <><SectionHeader eyebrow="Your soft place to land" title="Talk to Mira" description="A warm check-in companion for messy thoughts, body questions, and the days you just need someone to listen." action={<StatusPill tone="rose"><MessageCircle size={13} /> Here with you</StatusPill>} /><div className="companion-layout"><div className="panel chat-panel"><div className="chat-head"><div className="mira-avatar">M</div><div><strong>Mira</strong><span>Your gentle, no-judgment check-in companion</span></div><span className="online-dot">online</span></div><div className="chat-messages">{messages.map((message, index) => <div className={`chat-bubble ${message.from}`} key={index}>{message.text}</div>)}</div><div className="quick-prompts">{["I feel overwhelmed", "I’m worried about my symptoms", "I need a tiny win"].map((prompt) => <button key={prompt} onClick={() => sendMessage(prompt)}>{prompt}</button>)}</div><div className="chat-compose"><input value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => event.key === "Enter" && sendMessage()} placeholder="Tell Mira what’s on your mind…" aria-label="Message Mira" /><button onClick={() => sendMessage()} aria-label="Send message"><Send size={17} /></button></div></div><div className="panel companion-note"><div className="motivation-spark"><Sparkles size={17} /></div><div className="eyebrow">A little boundary, with love</div><h3>Mira listens. Professionals diagnose.</h3><p>She can help you reflect, organize questions, and find a little comfort. She cannot diagnose or replace a healthcare professional.</p><div className="mira-values"><span><Check size={14} /> No shame</span><span><Check size={14} /> No comparison</span><span><Check size={14} /> No perfect answers</span></div></div></div></>;
+}
+
+function Dashboard({ quote, goTo, riskResult, lastLog, forecast, chart, logs, greeting, greetingCopy, dateLabel }: { quote: { text: string; by: string }; goTo: (page: string) => void; riskResult: ReturnType<typeof calculateRisk>; lastLog: LogEntry; forecast: { average: number; irregular: boolean }; chart: { month: string; days: number }[]; logs: LogEntry[]; greeting: string; greetingCopy: string; dateLabel: string }) {
   return <>
-    <SectionHeader eyebrow={dateLabel} title={greeting} description={greetingCopy} action={<button className="primary-button" onClick={() => goTo("cycle")}><Plus size={17} /> Log today's health</button>} />
+    <SectionHeader eyebrow={dateLabel} title={greeting} description={greetingCopy} quote={quote} action={<button className="primary-button" onClick={() => goTo("cycle")}><Plus size={17} /> Log today's health</button>} />
     <div className="dashboard-grid-top">
       <div className="hero-card">
         <div className="hero-card-glow" />
@@ -424,7 +452,7 @@ function NutritionMood({ logs }: { logs: LogEntry[] }) {
   return <>
     <SectionHeader eyebrow="Supportive, not prescriptive" title="Nutrition & mood" description="Simple rule-based guidance based on the signals you choose to track. Take what feels useful." action={<div className="method-chip"><Sparkles size={15} /> Gentle guidance</div>} />
     <div className="wellness-grid"><div className="panel mood-panel"><div className="panel-heading"><div><div className="eyebrow">Mood rhythm</div><h3>How your mood has moved</h3></div><div className="mood-score"><strong>7.0</strong><span>average / 10</span></div></div><div className="chart-wrap"><ResponsiveContainer width="100%" height={230}><AreaChart data={moodTrend} margin={{ top: 12, right: 8, left: -25, bottom: 0 }}><defs><linearGradient id="moodFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#a26769" stopOpacity={0.25} /><stop offset="100%" stopColor="#a26769" stopOpacity={0.02} /></linearGradient></defs><CartesianGrid vertical={false} stroke="#eadfd7" strokeDasharray="4 4" /><XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "#9d8d85", fontSize: 11 }} /><YAxis domain={[1, 10]} axisLine={false} tickLine={false} tick={{ fill: "#9d8d85", fontSize: 11 }} /><Tooltip /><Area type="monotone" dataKey="mood" stroke="#a26769" strokeWidth={2.5} fill="url(#moodFill)" dot={{ fill: "#a26769", stroke: "#fffaf7", strokeWidth: 3, r: 4 }} /></AreaChart></ResponsiveContainer></div><div className="mood-insight"><div className="tip-icon"><Sparkles size={15} /></div><p>Your mood tends to dip slightly during the late luteal window, then lift again as your next cycle begins.</p></div></div><div className="panel phase-card"><div className="eyebrow">Today · day 23</div><h3>Luteal phase</h3><p>A softer season for your energy. Small routines may feel better than big pushes.</p><div className="phase-progress"><span style={{ width: "72%" }} /></div><div className="phase-meta"><span>Day 23</span><span>~5 days to next cycle</span></div><div className="phase-orbit-small"><div className="orbit-center"><Moon size={18} /><strong>72%</strong><span>through</span></div></div></div></div>
-    <div className="suggestions-header"><div><div className="eyebrow">Based on your recent signals</div><h2>Three small ideas for today</h2></div><StatusPill tone="green">No diagnosis · just support</StatusPill></div><div className="suggestion-grid">{suggestions.map(({ icon: Icon, tag, title, copy, tone }) => <div className={`suggestion-card ${tone}`} key={title}><div className="suggestion-icon"><Icon size={19} /></div><div className="suggestion-tag">{tag}</div><h3>{title}</h3><p>{copy}</p><button className="text-button">Save idea <Plus size={14} /></button></div>)}</div><div className="panel nutrition-plan"><div className="nutrition-plan-heading"><div><div className="eyebrow">A simple weekly rhythm</div><h2>Build your plate, one meal at a time</h2></div><StatusPill tone="gold">PCOS-friendly principles</StatusPill></div><div className="nutrition-plan-grid"><div className="nutrition-day"><strong>Breakfast</strong><span>Greek yogurt + berries + chia</span><span>Eggs + whole-grain toast</span><span>Oats + nuts + cinnamon</span></div><div className="nutrition-day"><strong>Lunch</strong><span>Colorful grain bowl + tofu</span><span>Lentil soup + side salad</span><span>Chicken / paneer wrap + greens</span></div><div className="nutrition-day"><strong>Snack</strong><span>Apple + nut butter</span><span>Roasted chickpeas</span><span>Fruit + handful of nuts</span></div><div className="nutrition-day"><strong>Dinner</strong><span>Salmon / dal + vegetables</span><span>Stir-fry + brown rice</span><span>Bean tacos + avocado</span></div></div><div className="diet-note"><Info size={14} /> Focus on balanced meals with protein, fiber, healthy fats, and regular hydration. Adapt portions and ingredients to your needs with a qualified professional.</div></div><div className="disclaimer wellness-disclaimer"><Info size={14} /> Wellness suggestions are educational and not a substitute for personalized medical advice.</div>
+    <div className="suggestions-header"><div><div className="eyebrow">Based on your recent signals</div><h2>Three small ideas for today</h2></div><StatusPill tone="green">No diagnosis · just support</StatusPill></div><div className="suggestion-grid">{suggestions.map(({ icon: Icon, tag, title, copy, tone }) => <div className={`suggestion-card ${tone}`} key={title}><div className="suggestion-icon"><Icon size={19} /></div><div className="suggestion-tag">{tag}</div><h3>{title}</h3><p>{copy}</p><button className="text-button">Save idea <Plus size={14} /></button></div>)}</div><div className="panel nutrition-plan"><div className="nutrition-plan-heading"><div><div className="eyebrow">A simple weekly rhythm</div><h2>Build your plate, one meal at a time</h2></div><StatusPill tone="gold">PCOS-friendly principles</StatusPill></div><div className="nutrition-plan-grid"><div className="nutrition-day"><strong>Breakfast</strong><span>Greek yogurt + berries + chia</span><span>Eggs + whole-grain toast</span><span>Oats + nuts + cinnamon</span><span>Veg: besan chilla + curd</span><span>Vegan: poha + peanuts</span></div><div className="nutrition-day"><strong>Lunch</strong><span>Colorful grain bowl + tofu</span><span>Lentil soup + side salad</span><span>Chicken / paneer wrap + greens</span><span>Veg: rajma quinoa bowl</span><span>Vegan: chana salad + roti</span></div><div className="nutrition-day"><strong>Snack</strong><span>Apple + nut butter</span><span>Roasted chickpeas</span><span>Fruit + handful of nuts</span></div><div className="nutrition-day"><strong>Dinner</strong><span>Salmon / dal + vegetables</span><span>Stir-fry + brown rice</span><span>Bean tacos + avocado</span><span>Veg: palak tofu + millet</span><span>Vegan: dal + seasonal sabzi</span></div></div><div className="diet-note"><Info size={14} /> Focus on balanced meals with protein, fiber, healthy fats, and regular hydration. Adapt portions and ingredients to your needs with a qualified professional.</div></div><div className="panel exercise-plan"><div className="nutrition-plan-heading"><div><div className="eyebrow">Move in a way that feels good</div><h2>A gentle weekly movement menu</h2></div><StatusPill tone="green">No punishment workouts</StatusPill></div><div className="exercise-grid"><div><strong>2× / week</strong><span>20–30 min strength</span><small>Bodyweight squats, wall push-ups, glute bridges</small></div><div><strong>3× / week</strong><span>20–40 min walk</span><small>Steady pace, music on, or a chat with your favorite person</small></div><div><strong>Daily reset</strong><span>5–10 min mobility</span><small>Cat-cow, hip circles, child’s pose, deep breathing</small></div><div><strong>Low-energy days</strong><span>Rest is part of the plan</span><small>Gentle stretching or a short balcony walk is enough</small></div></div><div className="diet-note"><Info size={14} /> Movement should support your energy, not become another source of pressure. Stop if something hurts and ask a professional for personalized advice.</div></div><div className="disclaimer wellness-disclaimer"><Info size={14} /> Wellness suggestions are educational and not a substitute for personalized medical advice.</div>
   </>;
 }
 
