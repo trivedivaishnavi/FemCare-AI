@@ -215,6 +215,24 @@ function ChartTooltip({ active, payload, label }: any) {
   return <div className="chart-tooltip"><strong>{label}</strong><span>{payload[0].value} days</span></div>;
 }
 
+function getTimeWelcome(hour: number) {
+  if (hour < 5) return { title: "Hey, late-night girlie", copy: "The world can wait. A little rest and a little self-kindness are enough for tonight." };
+  if (hour < 12) return { title: "Good morning, Vaishnavi", copy: "A clearer view of your rhythm starts here. Here's your latest health snapshot." };
+  if (hour < 17) return { title: "Hey there, Vaishnavi", copy: "You're doing better than you think. Here's your latest health snapshot for the day." };
+  if (hour < 22) return { title: "Good evening, Vaishnavi", copy: "Take a breath, check in with yourself, and let your patterns guide you gently." };
+  return { title: "Hey, late-night girlie", copy: "Before you wind down, here's a gentle look at the signals your body is sharing." };
+}
+
+function formatToday(date: Date) {
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Kolkata" }).format(date);
+}
+
+function indiaDateInputValue(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Kolkata" }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
 export default function Home() {
   const [activePage, setActivePage] = useState("dashboard");
   const [mobileNav, setMobileNav] = useState(false);
@@ -223,7 +241,11 @@ export default function Home() {
   const [riskInput, setRiskInput] = useState<RiskInput>(initialRisk);
   const [riskResult, setRiskResult] = useState(() => calculateRisk(initialRisk));
   const [savedMessage, setSavedMessage] = useState("");
-  const [logForm, setLogForm] = useState({ date: "2026-09-16", cycleLength: "33", mood: "7", symptoms: ["Fatigue"], sleep: "7.5", exercise: "2–3 days", flow: "Moderate" });
+  const today = new Date();
+  const indiaHour = Number(new Intl.DateTimeFormat("en-US", { hour: "2-digit", hour12: false, timeZone: "Asia/Kolkata" }).format(today));
+  const timeWelcome = getTimeWelcome(indiaHour);
+  const dateLabel = formatToday(today);
+  const [logForm, setLogForm] = useState({ date: indiaDateInputValue(today), cycleLength: "33", mood: "7", symptoms: ["Fatigue"], sleep: "7.5", exercise: "2–3 days", flow: "Moderate" });
 
   const forecast = useMemo(() => {
     const lengths = logs.map((log) => log.cycleLength).slice(0, 6).reverse();
@@ -301,14 +323,14 @@ export default function Home() {
         <header className="topbar">
           <button className="mobile-menu icon-button" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Menu size={21} /></button>
           <div className="breadcrumbs"><span>Workspace</span><ChevronRight size={14} /><strong>{pageTitle}</strong></div>
-          <div className="topbar-actions"><button className="top-icon icon-button" aria-label="Help"><CircleHelp size={18} /></button><button className="top-icon icon-button" aria-label="Toggle dark mode" onClick={() => setDarkMode((value) => !value)}>{darkMode ? <SunMedium size={18} /> : <Moon size={18} />}<div className="notification-dot" /></button><div className="date-chip"><CalendarDays size={16} /> Sep 16, 2026</div></div>
+          <div className="topbar-actions"><button className="top-icon icon-button" aria-label="Help"><CircleHelp size={18} /></button><button className="top-icon icon-button" aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"} onClick={() => setDarkMode((value) => !value)}>{darkMode ? <SunMedium size={18} /> : <Moon size={18} />}<div className="notification-dot" /></button><div className="date-chip"><CalendarDays size={16} /> {dateLabel}</div></div>
         </header>
 
         {savedMessage && <div className="toast"><Check size={16} />{savedMessage}</div>}
 
         <div className="page-content">
           {activePage === "intake" && <GuidedIntake goTo={goTo} />}
-          {activePage === "dashboard" && <Dashboard goTo={goTo} riskResult={riskResult} lastLog={lastLog} forecast={forecast} chart={dashboardChart} logs={logs} />}
+          {activePage === "dashboard" && <Dashboard goTo={goTo} riskResult={riskResult} lastLog={lastLog} forecast={forecast} chart={dashboardChart} logs={logs} greeting={timeWelcome.title} greetingCopy={timeWelcome.copy} dateLabel={dateLabel} />}
           {activePage === "cycle" && <CycleLog logForm={logForm} setLogForm={setLogForm} toggleSymptom={toggleSymptom} saveLog={saveLog} logs={logs} />}
           {activePage === "risk" && <RiskAssessment riskInput={riskInput} updateRisk={updateRisk} assessRisk={assessRisk} riskResult={riskResult} />}
           {activePage === "forecast" && <Forecast forecast={forecast} logs={logs} />}
@@ -335,9 +357,9 @@ function GuidedIntake({ goTo }: { goTo: (page: string) => void }) {
     <div className="intake-layout"><div className="panel intake-panel"><div className="intake-progress">{steps.map((item, index) => <button type="button" key={item} className={`intake-step ${index + 1 <= step ? "done" : ""} ${index + 1 === step ? "current" : ""}`} onClick={() => setStep(index + 1)}><span>{index + 1 <= step ? <Check size={13} /> : index + 1}</span><strong>{item}</strong></button>)}</div><div className="intake-form-grid">{current.fields.map((field, index) => <label className="intake-field" key={field}><span>{field}</span>{index === 0 && step === 3 ? <input type="date" defaultValue="2026-08-18" /> : index === 1 && step === 3 ? <input type="number" defaultValue="34" /> : <select defaultValue=""><option value="" disabled>Select an option</option><option>Not sure yet</option><option>Sometimes</option><option>Often</option><option>Very often</option></select>}</label>)}</div><div className="intake-actions"><button className="soft-button" type="button" disabled={step === 1} onClick={() => setStep((value) => value - 1)}>Back</button>{step < steps.length ? <button className="primary-button" type="button" onClick={() => setStep((value) => value + 1)}>Continue <ChevronRight size={16} /></button> : <button className="primary-button" type="button" onClick={() => goTo("dashboard")}>Open my dashboard <ArrowUpRight size={16} /></button>}</div></div><div className="intake-side"><div className="panel motivation-card"><div className="motivation-spark"><Sparkles size={17} /></div><div className="eyebrow">A note for you</div><h3>You deserve care that feels personal.</h3><p>There is no “good” or “bad” answer here. This is a starting point, not a test.</p><span>One step at a time · You’ve got this</span></div><div className="panel intake-checklist"><div className="eyebrow">What we’ll personalize</div>{["Dashboard snapshot", "Estimated PCOS risk rate", "Cycle forecast", "Nutrition support", "Printable health summary"].map((item) => <div key={item}><Check size={14} />{item}</div>)}</div></div></div></>;
 }
 
-function Dashboard({ goTo, riskResult, lastLog, forecast, chart, logs }: { goTo: (page: string) => void; riskResult: ReturnType<typeof calculateRisk>; lastLog: LogEntry; forecast: { average: number; irregular: boolean }; chart: { month: string; days: number }[]; logs: LogEntry[] }) {
+function Dashboard({ goTo, riskResult, lastLog, forecast, chart, logs, greeting, greetingCopy, dateLabel }: { goTo: (page: string) => void; riskResult: ReturnType<typeof calculateRisk>; lastLog: LogEntry; forecast: { average: number; irregular: boolean }; chart: { month: string; days: number }[]; logs: LogEntry[]; greeting: string; greetingCopy: string; dateLabel: string }) {
   return <>
-    <SectionHeader eyebrow="Wednesday, September 16, 2026" title="Good morning, Vaishnavi" description="A clearer view of your rhythm starts here. Here's your latest health snapshot." action={<button className="primary-button" onClick={() => goTo("cycle")}><Plus size={17} /> Log today's health</button>} />
+    <SectionHeader eyebrow={dateLabel} title={greeting} description={greetingCopy} action={<button className="primary-button" onClick={() => goTo("cycle")}><Plus size={17} /> Log today's health</button>} />
     <div className="dashboard-grid-top">
       <div className="hero-card">
         <div className="hero-card-glow" />

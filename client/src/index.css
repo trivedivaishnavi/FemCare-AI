@@ -203,3 +203,13 @@ button:active { transform: scale(.98); }
 .diet-note svg { color: var(--gold); flex: 0 0 auto; }
 @media (max-width: 860px) { .intake-layout { grid-template-columns: 1fr; } .nutrition-plan-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 560px) { .intake-progress { gap: 3px; } .intake-step strong { display: none; } .intake-form-grid { grid-template-columns: 1fr; } .nutrition-plan-grid { grid-template-columns: 1fr; } .nutrition-plan-heading { align-items: flex-start; gap: 10px; flex-direction: column; } }
+
+/* Dark mode contrast corrections for metric and lower dashboard cards */
+.dark-mode .metric-card.berry { background: #3b2734; }
+.dark-mode .metric-card.rose { background: #3d2b32; }
+.dark-mode .metric-card.gold { background: #403522; }
+.dark-mode .metric-card.green { background: #283b31; }
+.dark-mode .metric-label, .dark-mode .metric-helper { color: #d5c1c2; }
+.dark-mode .metric-value, .dark-mode .panel-heading h3, .dark-mode .card-heading h3, .dark-mode .timeline-copy strong, .dark-mode .suggestions-header h2, .dark-mode .nutrition-plan-heading h2 { color: #f7e8e5; }
+.dark-mode .timeline-row, .dark-mode .mini-factor-list, .dark-mode .chart-footer, .dark-mode .chart-legend { border-color: #493541; }
+.dark-mode .chart-footer, .dark-mode .chart-legend, .dark-mode .timeline-copy span, .dark-mode .timeline-value span { color: #c0aeb0; }
