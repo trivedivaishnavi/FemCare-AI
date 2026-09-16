@@ -319,7 +319,7 @@ export default function Home() {
 
 function Dashboard({ goTo, riskResult, lastLog, forecast, chart, logs }: { goTo: (page: string) => void; riskResult: ReturnType<typeof calculateRisk>; lastLog: LogEntry; forecast: { average: number; irregular: boolean }; chart: { month: string; days: number }[]; logs: LogEntry[] }) {
   return <>
-    <SectionHeader eyebrow="Wednesday, September 16, 2026" title="Good morning, Alex" description="A clearer view of your rhythm starts here. Here's your latest health snapshot." action={<button className="primary-button" onClick={() => goTo("cycle")}><Plus size={17} /> Log today's health</button>} />
+    <SectionHeader eyebrow="Wednesday, September 16, 2026" title="Good morning, Vaishnavi" description="A clearer view of your rhythm starts here. Here's your latest health snapshot." action={<button className="primary-button" onClick={() => goTo("cycle")}><Plus size={17} /> Log today's health</button>} />
     <div className="dashboard-grid-top">
       <div className="hero-card">
         <div className="hero-card-glow" />
