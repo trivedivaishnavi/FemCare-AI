@@ -330,7 +330,7 @@ export default function Home({ account, onLogout }: { account: LocalAccount; onL
         {savedMessage && <div className="toast"><Check size={16} />{savedMessage}</div>}
 
         <div className="page-content">
-          {activePage === "companion" && <Companion logs={logs} storageKey={storageKey("mira-chat")} />}
+          {activePage === "companion" && <Companion name={account.name} logs={logs} riskInput={riskInput} riskResult={riskResult} storageKey={storageKey("mira-chat")} />}
           {activePage === "dashboard" && <Dashboard quote={dailyQuote} goTo={goTo} riskResult={riskResult} lastLog={lastLog} forecast={forecast} chart={dashboardChart} logs={logs} greeting={timeWelcome.title} greetingCopy={timeWelcome.copy} dateLabel={dateLabel} />}
           {activePage === "cycle" && <CycleLog logForm={logForm} setLogForm={setLogForm} toggleSymptom={toggleSymptom} saveLog={saveLog} logs={logs} />}
           {activePage === "risk" && <RiskAssessment riskInput={riskInput} updateRisk={updateRisk} assessRisk={assessRisk} riskResult={riskResult} />}
@@ -343,7 +343,7 @@ export default function Home({ account, onLogout }: { account: LocalAccount; onL
   );
 }
 
-function Companion({ logs, storageKey }: { logs: LogEntry[]; storageKey: string }) {
+function Companion({ name, logs, riskInput, riskResult, storageKey }: { name: string; logs: LogEntry[]; riskInput: RiskInput; riskResult: RiskResult; storageKey: string }) {
   const latest = logs[0] || emptyLog;
   const [messages, setMessages] = useState<{ from: string; text: string }[]>(() => {
     try {
@@ -352,21 +352,30 @@ function Companion({ logs, storageKey }: { logs: LogEntry[]; storageKey: string 
     } catch { return [{ from: "mira", text: "Hey girlie, I’m Mira. You can rant here — no fixing, no judgment, no pretending you’re fine. What’s sitting heavy today?" }]; }
   });
   const [input, setInput] = useState("");
+  const [typing, setTyping] = useState(false);
   const phase = latest.cycleLength > 35 ? "a variable cycle window" : "your current cycle rhythm";
   const moodNote = latest.mood <= 5 ? "I noticed your recent mood check-in felt low, so we can keep this soft and low-pressure." : latest.mood >= 8 ? "Your latest mood check-in sounded brighter — we can build on that little spark." : "We can meet you exactly where your mood is today.";
-  const replies = [
-    `I hear you. You don’t have to make this sound smaller for me. I’m holding space for ${phase}.`,
-    `That sounds like a lot to carry. ${moodNote} Let’s take one tiny, kind next step — or just breathe here for a minute.`,
-    "You are not being dramatic. Your feelings are information, and you deserve support with them.",
-    "I’m proud of you for saying it out loud. You’re allowed to want care, softness, and answers.",
-  ];
-  const sendMessage = (text = input) => { if (!text.trim()) return; setMessages((current) => { const next = [...current, { from: "you", text: text.trim() }, { from: "mira", text: replies[current.length % replies.length] }]; window.localStorage.setItem(storageKey, JSON.stringify(next)); return next; }); setInput(""); };
-  return <><SectionHeader eyebrow="Your soft place to land" title="Talk to Mira" description="A warm check-in companion for messy thoughts, body questions, and the days you just need someone to listen." action={<StatusPill tone="rose"><MessageCircle size={13} /> Here with you</StatusPill>} /><div className="companion-layout"><div className="panel chat-panel"><div className="chat-head"><div className="mira-avatar">M</div><div><strong>Mira</strong><span>Your gentle, no-judgment check-in companion</span></div><span className="online-dot">online</span></div><div className="chat-messages">{messages.map((message, index) => <div className={`chat-bubble ${message.from}`} key={index}>{message.text}</div>)}</div><div className="quick-prompts">{["I feel overwhelmed", "I’m worried about my symptoms", "I need a tiny win"].map((prompt) => <button key={prompt} onClick={() => sendMessage(prompt)}>{prompt}</button>)}</div><div className="chat-compose"><input value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => event.key === "Enter" && sendMessage()} placeholder="Tell Mira what’s on your mind…" aria-label="Message Mira" /><button onClick={() => sendMessage()} aria-label="Send message"><Send size={17} /></button></div></div><div className="panel companion-note"><div className="motivation-spark"><Sparkles size={17} /></div><div className="eyebrow">A little boundary, with love</div><h3>Mira listens. Professionals diagnose.</h3><p>She can help you reflect, organize questions, and find a little comfort. She cannot diagnose or replace a healthcare professional.</p><div className="mira-values"><span><Check size={14} /> No shame</span><span><Check size={14} /> No comparison</span><span><Check size={14} /> No perfect answers</span></div></div></div></>;
+  const symptoms = latest.symptoms.length ? latest.symptoms.slice(0, 3).join(", ").toLowerCase() : "no symptoms logged yet";
+  const context = `The user is ${name}. Latest logged cycle: ${latest.cycleLength} days (${phase}). Recent symptoms: ${symptoms}. Latest mood: ${latest.mood}/10. Current estimated PCOS risk rate: ${riskResult.score}% (${riskResult.label}), presented as awareness-only, not a diagnosis. Exercise frequency in latest log: ${latest.exercise}.`;
+  const sendMessage = (text = input) => {
+    const clean = text.trim();
+    if (!clean || typing) return;
+    const crisis = /(kill myself|suicide|self harm|hurt myself|don't want to live|end my life)/i.test(clean);
+    const response = crisis
+      ? "I’m really glad you told me. I can’t keep you safe on my own. Please contact local emergency services or a crisis helpline now, and if you can, tell someone you trust to stay with you. You deserve immediate, human support."
+      : /risk|pcos|score/i.test(clean)
+        ? `I can explain the estimate gently. Yours is currently ${riskResult.score}% — an awareness estimate, not a diagnosis. The biggest signals showing right now are ${riskResult.contributions.slice(0, 2).map((item) => item.label.toLowerCase()).join(" and ")}. A clinician is the right person to interpret what that means for you.`
+        : `I hear you, ${name.split(" ")[0]}. ${moodNote} I’m keeping your latest check-in in mind — ${symptoms} — but you never have to explain everything perfectly. What part feels heaviest right now?`;
+    setMessages((current) => [...current, { from: "you", text: clean }]);
+    setInput(""); setTyping(true);
+    window.setTimeout(() => { setMessages((current) => { const next = [...current, { from: "mira", text: response }]; window.localStorage.setItem(storageKey, JSON.stringify(next)); return next; }); setTyping(false); }, 620);
+  };
+  return <><SectionHeader eyebrow="Your soft place to land" title="Talk to FemCare" description="A calm, cycle-aware check-in companion shaped by your own logged patterns — never a diagnosis, never a replacement for care." action={<StatusPill tone="rose"><MessageCircle size={13} /> Here with you</StatusPill>} /><div className="companion-layout"><div className="panel chat-panel"><div className="chat-head"><div className="mira-avatar">M</div><div><strong>Mira</strong><span>Personalized support for {name.split(" ")[0]}</span></div><span className="online-dot">online</span></div><div className="chat-context"><Sparkles size={14} /> I’m gently keeping your recent check-in in mind: {symptoms} · {latest.mood}/10 mood · {riskResult.score}% estimated PCOS risk rate.</div><div className="chat-messages">{messages.map((message, index) => <div className={`chat-bubble ${message.from}`} key={index}>{message.text}</div>)}{typing && <div className="chat-bubble mira typing-indicator"><span /><span /><span /></div>}</div><div className="quick-prompts">{["I’m feeling anxious about my next cycle", "Can you explain my risk score simply?", "I just want to talk"].map((prompt) => <button key={prompt} onClick={() => sendMessage(prompt)}>{prompt}</button>)}</div><div className="chat-compose"><input value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => event.key === "Enter" && sendMessage()} placeholder="Tell Mira what’s on your mind…" aria-label="Message Mira" /><button onClick={() => sendMessage()} aria-label="Send message"><Send size={17} /></button></div><p className="chat-disclaimer">This is a supportive companion, not a substitute for professional care.</p></div><div className="panel companion-note"><div className="motivation-spark"><Sparkles size={17} /></div><div className="eyebrow">A little boundary, with love</div><h3>Mira listens. Professionals diagnose.</h3><p>She can help you reflect, organize questions, and find a little comfort. She will not diagnose, prescribe, or give dosage advice.</p><div className="mira-values"><span><Check size={14} /> No shame</span><span><Check size={14} /> No comparison</span><span><Check size={14} /> Human help when needed</span></div></div></div></>;
 }
 
 function Dashboard({ quote, goTo, riskResult, lastLog, forecast, chart, logs, greeting, greetingCopy, dateLabel }: { quote: { text: string; by: string }; goTo: (page: string) => void; riskResult: RiskResult; lastLog: LogEntry; forecast: { average: number; irregular: boolean }; chart: { month: string; days: number }[]; logs: LogEntry[]; greeting: string; greetingCopy: string; dateLabel: string }) {
   return <>
-    <SectionHeader eyebrow={dateLabel} title={greeting} description={greetingCopy} quote={quote} action={<button className="primary-button" onClick={() => goTo("cycle")}><Plus size={17} /> Log today's health</button>} />
+    <SectionHeader eyebrow={dateLabel} title={greeting} description={greetingCopy} quote={quote} action={<div className="dashboard-actions"><button className="soft-button" onClick={() => goTo("companion")}><MessageCircle size={16} /> Talk to FemCare</button><button className="primary-button" onClick={() => goTo("cycle")}><Plus size={17} /> Log today's health</button></div>} />
     <div className="dashboard-grid-top">
       <div className="hero-card">
         <div className="hero-card-glow" />
