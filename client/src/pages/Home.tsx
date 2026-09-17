@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
+import type { LocalAccount } from "@/lib/auth";
+import { calculateRisk, type RiskInput, type RiskResult } from "@/lib/personalization";
 import {
   Activity,
   AlertCircle,
@@ -60,23 +62,6 @@ type LogEntry = {
   flow: string;
 };
 
-type RiskInput = {
-  age: number;
-  bmi: number;
-  cycleLength: number;
-  regularity: string;
-  hirsutism: number;
-  acne: number;
-  weightGain: number;
-  hairLoss: number;
-  skinDarkening: number;
-  fastFood: number;
-  exercise: number;
-  familyHistory: number;
-  folliclesLeft: number;
-  folliclesRight: number;
-};
-
 const navItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "companion", label: "Talk to Mira", icon: MessageCircle },
@@ -133,6 +118,8 @@ const initialRisk: RiskInput = {
   folliclesRight: 11,
 };
 
+const emptyLog: LogEntry = { id: 0, date: "2026-09-17", cycleLength: 28, mood: 7, symptoms: [], sleep: 7, exercise: "Rest day", flow: "Moderate" };
+
 const modelMetrics = [
   { metric: "Accuracy", logistic: "84%", forest: "89%" },
   { metric: "Precision", logistic: "81%", forest: "87%" },
@@ -140,37 +127,6 @@ const modelMetrics = [
   { metric: "F1-score", logistic: "79%", forest: "86%" },
   { metric: "ROC-AUC", logistic: "0.88", forest: "0.93" },
 ];
-
-function calculateRisk(input: RiskInput) {
-  const score = Math.min(
-    94,
-    Math.max(
-      8,
-      26 +
-        (input.regularity === "irregular" ? 17 : input.regularity === "somewhat-irregular" ? 9 : 0) +
-        Math.max(0, input.cycleLength - 28) * 0.8 +
-        input.hirsutism * 4.5 +
-        input.acne * 3.2 +
-        input.weightGain * 3.5 +
-        input.hairLoss * 2.5 +
-        input.skinDarkening * 2.5 +
-        input.fastFood * 1.5 -
-        input.exercise * 1.2 +
-        input.familyHistory * 12 +
-        Math.max(0, input.folliclesLeft + input.folliclesRight - 16) * 0.7 +
-        (input.bmi > 30 ? 7 : input.bmi > 25 ? 3 : 0),
-    ),
-  );
-  const label = score >= 68 ? "High" : score >= 42 ? "Moderate" : "Low";
-  const contributions = [
-    { label: "Cycle regularity", value: input.regularity === "irregular" ? 26 : input.regularity === "somewhat-irregular" ? 18 : 5, tone: "berry" },
-    { label: "Follicle count", value: Math.round(Math.max(6, input.folliclesLeft + input.folliclesRight - 11) * 1.35), tone: "gold" },
-    { label: "Hirsutism", value: input.hirsutism * 8, tone: "rose" },
-    { label: "Cycle length", value: Math.round(Math.max(4, input.cycleLength - 24) * 1.6), tone: "berry" },
-    { label: "Family history", value: input.familyHistory ? 15 : 0, tone: "gold" },
-  ].sort((a, b) => b.value - a.value);
-  return { score: Math.round(score), label, contributions: contributions.slice(0, 4) };
-}
 
 function formatDate(date: string) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(`${date}T12:00:00`));
@@ -232,11 +188,11 @@ function getDailyQuote(date: Date) {
   return dailyQuotes[Math.floor(date.getTime() / 86400000) % dailyQuotes.length];
 }
 
-function getTimeWelcome(hour: number) {
+function getTimeWelcome(hour: number, name: string) {
   if (hour < 5) return { title: "Hey, late-night girlie", copy: "The world can wait. A little rest and a little self-kindness are enough for tonight." };
-  if (hour < 12) return { title: "Good morning, Vaishnavi", copy: "A clearer view of your rhythm starts here. Here's your latest health snapshot." };
-  if (hour < 17) return { title: "Hey there, Vaishnavi", copy: "You're doing better than you think. Here's your latest health snapshot for the day." };
-  if (hour < 22) return { title: "Good evening, Vaishnavi", copy: "Take a breath, check in with yourself, and let your patterns guide you gently." };
+  if (hour < 12) return { title: `Good morning, ${name}`, copy: "A clearer view of your rhythm starts here. Here's your latest health snapshot." };
+  if (hour < 17) return { title: `Hey there, ${name}`, copy: "You're doing better than you think. Here's your latest health snapshot for the day." };
+  if (hour < 22) return { title: `Good evening, ${name}`, copy: "Take a breath, check in with yourself, and let your patterns guide you gently." };
   return { title: "Hey, late-night girlie", copy: "Before you wind down, here's a gentle look at the signals your body is sharing." };
 }
 
@@ -250,20 +206,23 @@ function indiaDateInputValue(date: Date) {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
-export default function Home({ onLogout }: { onLogout: () => void }) {
+export default function Home({ account, onLogout }: { account: LocalAccount; onLogout: () => void }) {
+  const userKey = account.id;
+  const storageKey = (key: string) => `femcare-${key}-${userKey}`;
   const [activePage, setActivePage] = useState("dashboard");
   const [mobileNav, setMobileNav] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [logs, setLogs] = useState<LogEntry[]>(initialLogs);
-  const [riskInput, setRiskInput] = useState<RiskInput>(initialRisk);
-  const [riskResult, setRiskResult] = useState(() => calculateRisk(initialRisk));
+  const [logs, setLogs] = useState<LogEntry[]>(() => { try { return JSON.parse(window.localStorage.getItem(storageKey("logs")) || "[]") as LogEntry[]; } catch { return []; } });
+  const [riskInput, setRiskInput] = useState<RiskInput>(() => { try { return JSON.parse(window.localStorage.getItem(storageKey("risk-input")) || JSON.stringify(initialRisk)) as RiskInput; } catch { return initialRisk; } });
+  const [riskResult, setRiskResult] = useState(() => calculateRisk(riskInput));
   const [savedMessage, setSavedMessage] = useState("");
   useEffect(() => {
     setRiskResult(calculateRisk(riskInput));
+    window.localStorage.setItem(storageKey("risk-input"), JSON.stringify(riskInput));
   }, [riskInput]);
   const today = new Date();
   const indiaHour = Number(new Intl.DateTimeFormat("en-US", { hour: "2-digit", hour12: false, timeZone: "Asia/Kolkata" }).format(today));
-  const timeWelcome = getTimeWelcome(indiaHour);
+  const timeWelcome = getTimeWelcome(indiaHour, account.name);
   const dateLabel = formatToday(today);
   const dailyQuote = getDailyQuote(today);
   const [logForm, setLogForm] = useState({ date: indiaDateInputValue(today), cycleLength: "33", mood: "7", symptoms: ["Fatigue"], sleep: "7.5", exercise: "2–3 days", flow: "Moderate" });
@@ -272,8 +231,8 @@ export default function Home({ onLogout }: { onLogout: () => void }) {
     const lengths = logs.map((log) => log.cycleLength).slice(0, 6).reverse();
     const weights = lengths.map((_, index) => index + 1);
     const weighted = lengths.reduce((sum, length, index) => sum + length * weights[index], 0) / weights.reduce((sum, weight) => sum + weight, 0);
-    const average = Math.round(weighted);
-    const variance = lengths.reduce((sum, value) => sum + (value - average) ** 2, 0) / lengths.length;
+    const average = lengths.length ? Math.round(weighted) : 28;
+    const variance = lengths.length ? lengths.reduce((sum, value) => sum + (value - average) ** 2, 0) / lengths.length : 0;
     return { lengths, average, irregular: Math.sqrt(variance) > 3.5 };
   }, [logs]);
 
@@ -309,7 +268,7 @@ export default function Home({ onLogout }: { onLogout: () => void }) {
       exercise: logForm.exercise,
       flow: logForm.flow,
     };
-    setLogs((current) => [entry, ...current]);
+    setLogs((current) => { const next = [entry, ...current]; window.localStorage.setItem(storageKey("logs"), JSON.stringify(next)); return next; });
     showSaved("Cycle entry saved to your private timeline");
     goTo("dashboard");
   };
@@ -317,10 +276,11 @@ export default function Home({ onLogout }: { onLogout: () => void }) {
   const assessRisk = (event: React.FormEvent) => {
     event.preventDefault();
     setRiskResult(calculateRisk(riskInput));
+    window.localStorage.setItem(storageKey("risk-input"), JSON.stringify(riskInput));
     showSaved("Risk estimate refreshed using the selected model");
   };
 
-  const lastLog = logs[0];
+  const lastLog = logs[0] || emptyLog;
   const pageTitle = navItems.find((item) => item.id === activePage)?.label || "Dashboard";
 
   return (
@@ -337,7 +297,7 @@ export default function Home({ onLogout }: { onLogout: () => void }) {
         </nav>
         <div className="sidebar-spacer" />
         <div className="sidebar-note"><div className="note-icon"><ShieldCheck size={17} /></div><div><strong>Your data stays yours</strong><p>Prototype data is stored locally in this browser.</p></div></div>
-        <button className="profile-card" onClick={() => showSaved("Profile settings are ready for your next iteration")}><div className="avatar">VT</div><div className="profile-copy"><strong>Vaishnavi Trivedi</strong><span>Personal workspace</span></div><MoreHorizontal size={18} /></button>
+        <button className="profile-card" onClick={() => showSaved("Profile settings are ready for your next iteration")}><div className="avatar">{account.name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</div><div className="profile-copy"><strong>{account.name}</strong><span>Personal workspace</span></div><MoreHorizontal size={18} /></button>
         <button className="logout-button" onClick={onLogout}><LogOut size={14} /> Log out</button>
       </aside>
 
@@ -351,24 +311,24 @@ export default function Home({ onLogout }: { onLogout: () => void }) {
         {savedMessage && <div className="toast"><Check size={16} />{savedMessage}</div>}
 
         <div className="page-content">
-          {activePage === "companion" && <Companion logs={logs} />}
+          {activePage === "companion" && <Companion logs={logs} storageKey={storageKey("mira-chat")} />}
           {activePage === "dashboard" && <Dashboard quote={dailyQuote} goTo={goTo} riskResult={riskResult} lastLog={lastLog} forecast={forecast} chart={dashboardChart} logs={logs} greeting={timeWelcome.title} greetingCopy={timeWelcome.copy} dateLabel={dateLabel} />}
           {activePage === "cycle" && <CycleLog logForm={logForm} setLogForm={setLogForm} toggleSymptom={toggleSymptom} saveLog={saveLog} logs={logs} />}
           {activePage === "risk" && <RiskAssessment riskInput={riskInput} updateRisk={updateRisk} assessRisk={assessRisk} riskResult={riskResult} />}
           {activePage === "forecast" && <Forecast forecast={forecast} logs={logs} />}
-          {activePage === "nutrition" && <NutritionMood logs={logs} />}
-          {activePage === "reports" && <Reports logs={logs} riskResult={riskResult} forecast={forecast} />}
+          {activePage === "nutrition" && <NutritionMood logs={logs} riskInput={riskInput} riskResult={riskResult} storageKey={storageKey("exercise-preference")} />}
+          {activePage === "reports" && <Reports name={account.name} logs={logs} riskResult={riskResult} forecast={forecast} />}
         </div>
       </main>
     </div>
   );
 }
 
-function Companion({ logs }: { logs: LogEntry[] }) {
-  const latest = logs[0] || initialLogs[0];
+function Companion({ logs, storageKey }: { logs: LogEntry[]; storageKey: string }) {
+  const latest = logs[0] || emptyLog;
   const [messages, setMessages] = useState<{ from: string; text: string }[]>(() => {
     try {
-      const stored = window.localStorage.getItem("femcare-mira-chat");
+      const stored = window.localStorage.getItem(storageKey);
       return stored ? JSON.parse(stored) : [{ from: "mira", text: "Hey girlie, I’m Mira. You can rant here — no fixing, no judgment, no pretending you’re fine. What’s sitting heavy today?" }];
     } catch { return [{ from: "mira", text: "Hey girlie, I’m Mira. You can rant here — no fixing, no judgment, no pretending you’re fine. What’s sitting heavy today?" }]; }
   });
@@ -381,11 +341,11 @@ function Companion({ logs }: { logs: LogEntry[] }) {
     "You are not being dramatic. Your feelings are information, and you deserve support with them.",
     "I’m proud of you for saying it out loud. You’re allowed to want care, softness, and answers.",
   ];
-  const sendMessage = (text = input) => { if (!text.trim()) return; setMessages((current) => { const next = [...current, { from: "you", text: text.trim() }, { from: "mira", text: replies[current.length % replies.length] }]; window.localStorage.setItem("femcare-mira-chat", JSON.stringify(next)); return next; }); setInput(""); };
+  const sendMessage = (text = input) => { if (!text.trim()) return; setMessages((current) => { const next = [...current, { from: "you", text: text.trim() }, { from: "mira", text: replies[current.length % replies.length] }]; window.localStorage.setItem(storageKey, JSON.stringify(next)); return next; }); setInput(""); };
   return <><SectionHeader eyebrow="Your soft place to land" title="Talk to Mira" description="A warm check-in companion for messy thoughts, body questions, and the days you just need someone to listen." action={<StatusPill tone="rose"><MessageCircle size={13} /> Here with you</StatusPill>} /><div className="companion-layout"><div className="panel chat-panel"><div className="chat-head"><div className="mira-avatar">M</div><div><strong>Mira</strong><span>Your gentle, no-judgment check-in companion</span></div><span className="online-dot">online</span></div><div className="chat-messages">{messages.map((message, index) => <div className={`chat-bubble ${message.from}`} key={index}>{message.text}</div>)}</div><div className="quick-prompts">{["I feel overwhelmed", "I’m worried about my symptoms", "I need a tiny win"].map((prompt) => <button key={prompt} onClick={() => sendMessage(prompt)}>{prompt}</button>)}</div><div className="chat-compose"><input value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => event.key === "Enter" && sendMessage()} placeholder="Tell Mira what’s on your mind…" aria-label="Message Mira" /><button onClick={() => sendMessage()} aria-label="Send message"><Send size={17} /></button></div></div><div className="panel companion-note"><div className="motivation-spark"><Sparkles size={17} /></div><div className="eyebrow">A little boundary, with love</div><h3>Mira listens. Professionals diagnose.</h3><p>She can help you reflect, organize questions, and find a little comfort. She cannot diagnose or replace a healthcare professional.</p><div className="mira-values"><span><Check size={14} /> No shame</span><span><Check size={14} /> No comparison</span><span><Check size={14} /> No perfect answers</span></div></div></div></>;
 }
 
-function Dashboard({ quote, goTo, riskResult, lastLog, forecast, chart, logs, greeting, greetingCopy, dateLabel }: { quote: { text: string; by: string }; goTo: (page: string) => void; riskResult: ReturnType<typeof calculateRisk>; lastLog: LogEntry; forecast: { average: number; irregular: boolean }; chart: { month: string; days: number }[]; logs: LogEntry[]; greeting: string; greetingCopy: string; dateLabel: string }) {
+function Dashboard({ quote, goTo, riskResult, lastLog, forecast, chart, logs, greeting, greetingCopy, dateLabel }: { quote: { text: string; by: string }; goTo: (page: string) => void; riskResult: RiskResult; lastLog: LogEntry; forecast: { average: number; irregular: boolean }; chart: { month: string; days: number }[]; logs: LogEntry[]; greeting: string; greetingCopy: string; dateLabel: string }) {
   return <>
     <SectionHeader eyebrow={dateLabel} title={greeting} description={greetingCopy} quote={quote} action={<button className="primary-button" onClick={() => goTo("cycle")}><Plus size={17} /> Log today's health</button>} />
     <div className="dashboard-grid-top">
@@ -414,7 +374,7 @@ function CycleLog({ logForm, setLogForm, toggleSymptom, saveLog, logs }: { logFo
   </>;
 }
 
-function RiskAssessment({ riskInput, updateRisk, assessRisk, riskResult }: { riskInput: RiskInput; updateRisk: (field: keyof RiskInput, value: string | number) => void; assessRisk: (event: React.FormEvent) => void; riskResult: ReturnType<typeof calculateRisk> }) {
+function RiskAssessment({ riskInput, updateRisk, assessRisk, riskResult }: { riskInput: RiskInput; updateRisk: (field: keyof RiskInput, value: string | number) => void; assessRisk: (event: React.FormEvent) => void; riskResult: RiskResult }) {
   const fields: { key: keyof RiskInput; label: string; min: number; max: number; step?: number; suffix?: string }[] = [
     { key: "age", label: "Age", min: 18, max: 50, suffix: "years" },
     { key: "bmi", label: "BMI", min: 16, max: 45, step: 0.1 },
@@ -447,21 +407,24 @@ function Forecast({ forecast, logs }: { forecast: { lengths: number[]; average: 
   </>;
 }
 
-function NutritionMood({ logs }: { logs: LogEntry[] }) {
-  const [exercisePreference, setExercisePreference] = useState(() => window.localStorage.getItem("femcare-exercise-preference") || "low-energy");
-  const setExercise = (value: string) => { setExercisePreference(value); window.localStorage.setItem("femcare-exercise-preference", value); };
+function NutritionMood({ logs, riskInput, riskResult, storageKey }: { logs: LogEntry[]; riskInput: RiskInput; riskResult: RiskResult; storageKey: string }) {
+  const latest = logs[0] || emptyLog;
+  const moodAverage = logs.length ? (logs.reduce((sum, log) => sum + log.mood, 0) / logs.length).toFixed(1) : "—";
+  const [exercisePreference, setExercisePreference] = useState(() => window.localStorage.getItem(storageKey) || "low-energy");
+  const setExercise = (value: string) => { setExercisePreference(value); window.localStorage.setItem(storageKey, value); };
   const exerciseOptions = [{ id: "yoga", label: "Yoga", icon: "◒", copy: "Flow, breathwork, hip-openers, and restorative stretches." }, { id: "gym", label: "Gym", icon: "✦", copy: "Strength machines, moderate cardio, and confident progressive training." }, { id: "home", label: "Home workouts", icon: "⌂", copy: "Bodyweight strength, dance breaks, and short guided circuits." }, { id: "low-energy", label: "Low-energy", icon: "☾", copy: "Mobility, gentle walking, stretching, and guilt-free rest." }];
-  const suggestions = [{ icon: Leaf, tag: "Inflammation support", title: "Build a colorful plate", copy: "Try leafy greens, berries, olive oil, and a protein-rich base for your next meal.", tone: "green" }, { icon: Dumbbell, tag: "Luteal phase", title: "Choose gentler movement", copy: "A walk, mobility flow, or light strength session can support energy without overreaching.", tone: "berry" }, { icon: Moon, tag: "Rest rhythm", title: "Protect your wind-down", copy: "A consistent bedtime and lower light in the last hour can help your sleep signals stay steady.", tone: "gold" }];
+  const topFactor = riskResult.contributions[0]?.label || "your current signals";
+  const suggestions = riskInput.acne >= 3 || riskInput.weightGain >= 3 ? [{ icon: Leaf, tag: topFactor, title: "Build a lower-glycemic plate", copy: "Try dal, tofu or paneer, vegetables, nuts, and whole grains instead of sugary snacks alone.", tone: "green" }, { icon: Dumbbell, tag: "Metabolic support", title: "Add gentle strength", copy: "Two or three short resistance sessions can support energy and confidence without punishment.", tone: "berry" }, { icon: Moon, tag: "Recovery", title: "Give your skin and body rest", copy: "Hydration, sleep consistency, and a calming evening routine can support your next check-in.", tone: "gold" }] : riskInput.regularity !== "regular" ? [{ icon: Leaf, tag: topFactor, title: "Steady your plate", copy: "Pair protein, fiber, and healthy fats at regular meals to support energy around variable cycles.", tone: "green" }, { icon: Dumbbell, tag: "Cycle support", title: "Choose consistent movement", copy: "Try 20–30 minutes of walking or strength on most days, adjusting intensity to your energy.", tone: "berry" }, { icon: Moon, tag: latest.mood <= 5 ? "Low mood support" : "Rest rhythm", title: "Protect your wind-down", copy: "A predictable bedtime and a screen-light buffer can help when cycle variability feels tiring.", tone: "gold" }] : [{ icon: Leaf, tag: topFactor, title: "Build a colorful plate", copy: "Try leafy greens, berries, olive oil, and a protein-rich base for your next meal.", tone: "green" }, { icon: Dumbbell, tag: "Cycle support", title: "Move in a way that feels good", copy: "A walk, mobility flow, or light strength session can support energy without overreaching.", tone: "berry" }, { icon: Moon, tag: "Rest rhythm", title: "Protect your wind-down", copy: "A consistent bedtime and lower light in the last hour can help your sleep signals stay steady.", tone: "gold" }];
   return <>
     <SectionHeader eyebrow="Supportive, not prescriptive" title="Nutrition & mood" description="Simple rule-based guidance based on the signals you choose to track. Take what feels useful." action={<div className="method-chip"><Sparkles size={15} /> Gentle guidance</div>} />
-    <div className="wellness-grid"><div className="panel mood-panel"><div className="panel-heading"><div><div className="eyebrow">Mood rhythm</div><h3>How your mood has moved</h3></div><div className="mood-score"><strong>7.0</strong><span>average / 10</span></div></div><div className="chart-wrap"><ResponsiveContainer width="100%" height={230}><AreaChart data={moodTrend} margin={{ top: 12, right: 8, left: -25, bottom: 0 }}><defs><linearGradient id="moodFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#a26769" stopOpacity={0.25} /><stop offset="100%" stopColor="#a26769" stopOpacity={0.02} /></linearGradient></defs><CartesianGrid vertical={false} stroke="#eadfd7" strokeDasharray="4 4" /><XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "#9d8d85", fontSize: 11 }} /><YAxis domain={[1, 10]} axisLine={false} tickLine={false} tick={{ fill: "#9d8d85", fontSize: 11 }} /><Tooltip /><Area type="monotone" dataKey="mood" stroke="#a26769" strokeWidth={2.5} fill="url(#moodFill)" dot={{ fill: "#a26769", stroke: "#fffaf7", strokeWidth: 3, r: 4 }} /></AreaChart></ResponsiveContainer></div><div className="mood-insight"><div className="tip-icon"><Sparkles size={15} /></div><p>Your mood tends to dip slightly during the late luteal window, then lift again as your next cycle begins.</p></div></div><div className="panel phase-card"><div className="eyebrow">Today · day 23</div><h3>Luteal phase</h3><p>A softer season for your energy. Small routines may feel better than big pushes.</p><div className="phase-progress"><span style={{ width: "72%" }} /></div><div className="phase-meta"><span>Day 23</span><span>~5 days to next cycle</span></div><div className="phase-orbit-small"><div className="orbit-center"><Moon size={18} /><strong>72%</strong><span>through</span></div></div></div></div>
+    <div className="wellness-grid"><div className="panel mood-panel"><div className="panel-heading"><div><div className="eyebrow">Mood rhythm</div><h3>How your mood has moved</h3></div><div className="mood-score"><strong>{moodAverage}</strong><span>average / 10</span></div></div><div className="chart-wrap"><ResponsiveContainer width="100%" height={230}><AreaChart data={moodTrend} margin={{ top: 12, right: 8, left: -25, bottom: 0 }}><defs><linearGradient id="moodFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#a26769" stopOpacity={0.25} /><stop offset="100%" stopColor="#a26769" stopOpacity={0.02} /></linearGradient></defs><CartesianGrid vertical={false} stroke="#eadfd7" strokeDasharray="4 4" /><XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "#9d8d85", fontSize: 11 }} /><YAxis domain={[1, 10]} axisLine={false} tickLine={false} tick={{ fill: "#9d8d85", fontSize: 11 }} /><Tooltip /><Area type="monotone" dataKey="mood" stroke="#a26769" strokeWidth={2.5} fill="url(#moodFill)" dot={{ fill: "#a26769", stroke: "#fffaf7", strokeWidth: 3, r: 4 }} /></AreaChart></ResponsiveContainer></div><div className="mood-insight"><div className="tip-icon"><Sparkles size={15} /></div><p>Your mood tends to dip slightly during the late luteal window, then lift again as your next cycle begins.</p></div></div><div className="panel phase-card"><div className="eyebrow">Today · day 23</div><h3>Luteal phase</h3><p>A softer season for your energy. Small routines may feel better than big pushes.</p><div className="phase-progress"><span style={{ width: "72%" }} /></div><div className="phase-meta"><span>Day 23</span><span>~5 days to next cycle</span></div><div className="phase-orbit-small"><div className="orbit-center"><Moon size={18} /><strong>72%</strong><span>through</span></div></div></div></div>
     <div className="suggestions-header"><div><div className="eyebrow">Based on your recent signals</div><h2>Three small ideas for today</h2></div><StatusPill tone="green">No diagnosis · just support</StatusPill></div><div className="suggestion-grid">{suggestions.map(({ icon: Icon, tag, title, copy, tone }) => <div className={`suggestion-card ${tone}`} key={title}><div className="suggestion-icon"><Icon size={19} /></div><div className="suggestion-tag">{tag}</div><h3>{title}</h3><p>{copy}</p><button className="text-button">Save idea <Plus size={14} /></button></div>)}</div><div className="panel nutrition-plan"><div className="nutrition-plan-heading"><div><div className="eyebrow">A simple weekly rhythm</div><h2>Build your plate, one meal at a time</h2></div><StatusPill tone="gold">PCOS-friendly principles</StatusPill></div><div className="nutrition-plan-grid"><div className="nutrition-day"><strong>Breakfast</strong><span>Greek yogurt + berries + chia</span><span>Eggs + whole-grain toast</span><span>Oats + nuts + cinnamon</span><span>Veg: besan chilla + curd</span><span>Vegan: poha + peanuts</span></div><div className="nutrition-day"><strong>Lunch</strong><span>Colorful grain bowl + tofu</span><span>Lentil soup + side salad</span><span>Chicken / paneer wrap + greens</span><span>Veg: rajma quinoa bowl</span><span>Vegan: chana salad + roti</span></div><div className="nutrition-day"><strong>Snack</strong><span>Apple + nut butter</span><span>Roasted chickpeas</span><span>Fruit + handful of nuts</span></div><div className="nutrition-day"><strong>Dinner</strong><span>Salmon / dal + vegetables</span><span>Stir-fry + brown rice</span><span>Bean tacos + avocado</span><span>Veg: palak tofu + millet</span><span>Vegan: dal + seasonal sabzi</span></div></div><div className="diet-note"><Info size={14} /> Focus on balanced meals with protein, fiber, healthy fats, and regular hydration. Adapt portions and ingredients to your needs with a qualified professional.</div></div><div className="panel exercise-plan"><div className="nutrition-plan-heading"><div><div className="eyebrow">Move in a way that feels good</div><h2>Choose your movement mood</h2></div><StatusPill tone="green">No punishment workouts</StatusPill></div><div className="exercise-preferences">{exerciseOptions.map((option) => <button type="button" key={option.id} className={`exercise-choice ${exercisePreference === option.id ? "selected" : ""}`} onClick={() => setExercise(option.id)}><strong>{option.icon} {option.label}</strong><span>{option.copy}</span></button>)}</div><div className="exercise-grid"><div><strong>2× / week</strong><span>20–30 min strength</span><small>Bodyweight squats, wall push-ups, glute bridges</small></div><div><strong>3× / week</strong><span>20–40 min walk</span><small>Steady pace, music on, or a chat with your favorite person</small></div><div><strong>Daily reset</strong><span>5–10 min mobility</span><small>Cat-cow, hip circles, child’s pose, deep breathing</small></div><div><strong>Low-energy days</strong><span>Rest is part of the plan</span><small>Gentle stretching or a short balcony walk is enough</small></div></div><div className="diet-note"><Info size={14} /> Movement should support your energy, not become another source of pressure. Stop if something hurts and ask a professional for personalized advice.</div></div><div className="disclaimer wellness-disclaimer"><Info size={14} /> Wellness suggestions are educational and not a substitute for personalized medical advice.</div>
   </>;
 }
 
-function Reports({ logs, riskResult, forecast }: { logs: LogEntry[]; riskResult: ReturnType<typeof calculateRisk>; forecast: { average: number; irregular: boolean } }) {
+function Reports({ name, logs, riskResult, forecast }: { name: string; logs: LogEntry[]; riskResult: RiskResult; forecast: { average: number; irregular: boolean } }) {
   return <>
     <SectionHeader eyebrow="Bring a clearer picture to your appointment" title="Health summary" description="A clean, printable overview of the patterns you've chosen to track." action={<button className="primary-button" onClick={() => window.print()}><Download size={17} /> Print / save PDF</button>} />
-    <div className="report-preview"><div className="report-head"><div className="brand-inline"><div className="brand-mark small"><span>F</span><span className="brand-mark-dot" /></div><div><div className="brand-name">FemCare <em>AI</em></div><div className="report-subtitle">Personal health summary · generated Sep 16, 2026</div></div></div><div className="report-badge"><FileText size={15} /> Appointment brief</div></div><div className="report-intro"><h2>Vaishnavi Trivedi</h2><p>This summary is a conversation starter for a healthcare professional, based on self-reported information tracked in the FemCare AI prototype.</p></div><div className="report-grid"><div className="report-stat"><span>Latest cycle</span><strong>{logs[0]?.cycleLength || 0} days</strong><small>{logs[0] ? formatDate(logs[0].date) : "No entry"}</small></div><div className="report-stat"><span>Next cycle estimate</span><strong>~{forecast.average} days</strong><small>{forecast.irregular ? "Variable pattern" : "Weighted forecast"}</small></div><div className="report-stat"><span>Estimated PCOS risk rate</span><strong>{riskResult.score}%</strong><small>{riskResult.label} · model estimate</small></div></div><div className="report-section"><div className="report-section-heading"><h3>Cycle history</h3><span>{logs.length} logged cycles</span></div><div className="report-bars">{logs.slice(0, 6).reverse().map((log, index) => <div className="report-bar" key={log.id}><div className="bar-value">{log.cycleLength}d</div><div className="bar-track"><span style={{ height: `${Math.min(100, log.cycleLength * 2.7)}%` }} /></div><div className="bar-label">C{index + 1}</div></div>)}</div></div><div className="report-columns"><div className="report-section"><div className="report-section-heading"><h3>Top contributing signals</h3><span>Latest estimate</span></div><div className="report-factors">{riskResult.contributions.map((item) => <div key={item.label}><span>{item.label}</span><strong>+{item.value}%</strong></div>)}</div></div><div className="report-section"><div className="report-section-heading"><h3>Recent symptoms</h3><span>Timeline</span></div><div className="report-symptoms">{Array.from(new Set(logs.flatMap((log) => log.symptoms))).slice(0, 6).map((symptom) => <span key={symptom}><Check size={13} />{symptom}</span>)}</div></div></div><div className="report-footer"><ShieldCheck size={16} /><span>This is a decision-support and awareness tool, not a medical diagnosis. Please consult a healthcare professional.</span></div></div><div className="report-note"><Info size={16} /><div><strong>About this prototype</strong><p>Risk estimates use a reproducible synthetic dataset and lightweight in-browser model logic for demonstration. They are not validated for clinical use.</p></div></div>
+    <div className="report-preview"><div className="report-head"><div className="brand-inline"><div className="brand-mark small"><span>F</span><span className="brand-mark-dot" /></div><div><div className="brand-name">FemCare <em>AI</em></div><div className="report-subtitle">Personal health summary · generated Sep 16, 2026</div></div></div><div className="report-badge"><FileText size={15} /> Appointment brief</div></div><div className="report-intro"><h2>{name}</h2><p>This summary is a conversation starter for a healthcare professional, based on self-reported information tracked in the FemCare AI prototype.</p></div><div className="report-grid"><div className="report-stat"><span>Latest cycle</span><strong>{logs[0]?.cycleLength || 0} days</strong><small>{logs[0] ? formatDate(logs[0].date) : "No entry"}</small></div><div className="report-stat"><span>Next cycle estimate</span><strong>~{forecast.average} days</strong><small>{forecast.irregular ? "Variable pattern" : "Weighted forecast"}</small></div><div className="report-stat"><span>Estimated PCOS risk rate</span><strong>{riskResult.score}%</strong><small>{riskResult.label} · model estimate</small></div></div><div className="report-section"><div className="report-section-heading"><h3>Cycle history</h3><span>{logs.length} logged cycles</span></div><div className="report-bars">{logs.slice(0, 6).reverse().map((log, index) => <div className="report-bar" key={log.id}><div className="bar-value">{log.cycleLength}d</div><div className="bar-track"><span style={{ height: `${Math.min(100, log.cycleLength * 2.7)}%` }} /></div><div className="bar-label">C{index + 1}</div></div>)}</div></div><div className="report-columns"><div className="report-section"><div className="report-section-heading"><h3>Top contributing signals</h3><span>Latest estimate</span></div><div className="report-factors">{riskResult.contributions.map((item) => <div key={item.label}><span>{item.label}</span><strong>+{item.value}%</strong></div>)}</div></div><div className="report-section"><div className="report-section-heading"><h3>Recent symptoms</h3><span>Timeline</span></div><div className="report-symptoms">{Array.from(new Set(logs.flatMap((log) => log.symptoms))).slice(0, 6).map((symptom) => <span key={symptom}><Check size={13} />{symptom}</span>)}</div></div></div><div className="report-footer"><ShieldCheck size={16} /><span>This is a decision-support and awareness tool, not a medical diagnosis. Please consult a healthcare professional.</span></div></div><div className="report-note"><Info size={16} /><div><strong>About this prototype</strong><p>Risk estimates use a reproducible synthetic dataset and lightweight in-browser model logic for demonstration. They are not validated for clinical use.</p></div></div>
   </>;
 }

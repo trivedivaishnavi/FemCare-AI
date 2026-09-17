@@ -1,26 +1,27 @@
 import { useState } from "react";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
-import { clearLocalAccount, getLocalAccount } from "@/lib/auth";
+import { clearSession, getLocalAccount, setSession } from "@/lib/auth";
+import type { LocalAccount } from "@/lib/auth";
 
 const SESSION_KEY = "femcare-login-email";
 
 export default function App() {
-  const [email, setEmail] = useState(() => {
-    const account = getLocalAccount();
-    const session = window.localStorage.getItem(SESSION_KEY);
-    return account && session === account.email ? session : null;
+  const [account, setAccount] = useState<LocalAccount | null>(() => {
+    const current = getLocalAccount();
+    const session = window.localStorage.getItem("femcare-login-id");
+    return current && (session === current.id || window.localStorage.getItem(SESSION_KEY) === current.email) ? current : null;
   });
 
-  function handleLogin(nextEmail: string) {
-    window.localStorage.setItem(SESSION_KEY, nextEmail);
-    setEmail(nextEmail);
+  function handleLogin(nextAccount: LocalAccount) {
+    setSession(nextAccount);
+    setAccount(nextAccount);
   }
 
   function handleLogout() {
-    clearLocalAccount();
-    setEmail(null);
+    clearSession();
+    setAccount(null);
   }
 
-  return email ? <Home onLogout={handleLogout} /> : <Login onLogin={handleLogin} />;
+  return account ? <Home account={account} onLogout={handleLogout} /> : <Login onLogin={handleLogin} />;
 }
