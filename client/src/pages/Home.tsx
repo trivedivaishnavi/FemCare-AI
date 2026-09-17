@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertCircle,
@@ -257,6 +257,9 @@ export default function Home() {
   const [riskInput, setRiskInput] = useState<RiskInput>(initialRisk);
   const [riskResult, setRiskResult] = useState(() => calculateRisk(initialRisk));
   const [savedMessage, setSavedMessage] = useState("");
+  useEffect(() => {
+    setRiskResult(calculateRisk(riskInput));
+  }, [riskInput]);
   const today = new Date();
   const indiaHour = Number(new Intl.DateTimeFormat("en-US", { hour: "2-digit", hour12: false, timeZone: "Asia/Kolkata" }).format(today));
   const timeWelcome = getTimeWelcome(indiaHour);
