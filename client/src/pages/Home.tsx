@@ -206,6 +206,24 @@ function indiaDateInputValue(date: Date) {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
+function riskInputsFromCycleLog(log: LogEntry, current: RiskInput): RiskInput {
+  const symptoms = new Set(log.symptoms);
+  const movementDays = log.exercise === "4+ days" ? 5 : log.exercise === "2–3 days" ? 2 : log.exercise === "1 day" ? 1 : 0;
+  const regularity = log.cycleLength >= 36 ? "irregular" : log.cycleLength >= 32 ? "somewhat-irregular" : "regular";
+  return {
+    ...current,
+    cycleLength: log.cycleLength,
+    regularity,
+    hirsutism: symptoms.has("Hirsutism") ? Math.max(current.hirsutism, 3) : current.hirsutism,
+    acne: symptoms.has("Acne") ? Math.max(current.acne, 3) : current.acne,
+    weightGain: symptoms.has("Weight change") ? Math.max(current.weightGain, 3) : current.weightGain,
+    exercise: movementDays,
+    skinDarkening: symptoms.has("Skin darkening") ? Math.max(current.skinDarkening, 2) : current.skinDarkening,
+    hairLoss: symptoms.has("Hair loss") ? Math.max(current.hairLoss, 2) : current.hairLoss,
+    fastFood: log.mood <= 4 ? Math.min(7, Math.max(current.fastFood, 3)) : current.fastFood,
+  };
+}
+
 export default function Home({ account, onLogout }: { account: LocalAccount; onLogout: () => void }) {
   const userKey = account.id;
   const storageKey = (key: string) => `femcare-${key}-${userKey}`;
@@ -269,6 +287,7 @@ export default function Home({ account, onLogout }: { account: LocalAccount; onL
       flow: logForm.flow,
     };
     setLogs((current) => { const next = [entry, ...current]; window.localStorage.setItem(storageKey("logs"), JSON.stringify(next)); return next; });
+    setRiskInput((current) => riskInputsFromCycleLog(entry, current));
     showSaved("Cycle entry saved to your private timeline");
     goTo("dashboard");
   };
@@ -366,7 +385,7 @@ function Dashboard({ quote, goTo, riskResult, lastLog, forecast, chart, logs, gr
 }
 
 function CycleLog({ logForm, setLogForm, toggleSymptom, saveLog, logs }: { logForm: any; setLogForm: React.Dispatch<React.SetStateAction<any>>; toggleSymptom: (symptom: string) => void; saveLog: (event: React.FormEvent) => void; logs: LogEntry[] }) {
-  const symptoms = ["Cramps", "Mood changes", "Fatigue", "Bloating", "Acne", "Hirsutism", "Weight change"];
+  const symptoms = ["Cramps", "Mood changes", "Fatigue", "Bloating", "Acne", "Hirsutism", "Weight change", "Hair loss", "Skin darkening"];
   return <>
     <SectionHeader eyebrow="Your private timeline" title="Cycle log" description="Capture a few signals at a time. Your patterns become clearer as your timeline grows." action={<div className="privacy-badge"><ShieldCheck size={16} /> Private by default</div>} />
     <div className="log-layout"><form className="panel log-form" onSubmit={saveLog}><div className="panel-heading"><div><div className="eyebrow">New entry</div><h3>How are you feeling today?</h3></div><NotebookPen size={20} className="rose-icon" /></div><div className="form-grid"><label className="field"><span>Cycle start date</span><input type="date" value={logForm.date} onChange={(e) => setLogForm((current: any) => ({ ...current, date: e.target.value }))} /></label><label className="field"><span>Cycle length <small>days</small></span><input type="number" min="18" max="60" value={logForm.cycleLength} onChange={(e) => setLogForm((current: any) => ({ ...current, cycleLength: e.target.value }))} /></label></div><div className="field"><span>Symptoms today</span><div className="chip-grid">{symptoms.map((symptom) => <button type="button" key={symptom} className={`choice-chip ${logForm.symptoms.includes(symptom) ? "selected" : ""}`} onClick={() => toggleSymptom(symptom)}>{logForm.symptoms.includes(symptom) && <Check size={14} />}{symptom}</button>)}</div></div><div className="form-grid"><label className="field"><span>Mood <small>1–10</small></span><div className="range-row"><input type="range" min="1" max="10" value={logForm.mood} onChange={(e) => setLogForm((current: any) => ({ ...current, mood: e.target.value }))} /><strong>{logForm.mood}/10</strong></div></label><label className="field"><span>Sleep <small>hours</small></span><input type="number" min="0" max="14" step="0.5" value={logForm.sleep} onChange={(e) => setLogForm((current: any) => ({ ...current, sleep: e.target.value }))} /></label></div><div className="form-grid"><label className="field"><span>Movement</span><select value={logForm.exercise} onChange={(e) => setLogForm((current: any) => ({ ...current, exercise: e.target.value }))}><option>Rest day</option><option>1 day</option><option>2–3 days</option><option>4+ days</option></select></label><label className="field"><span>Flow</span><select value={logForm.flow} onChange={(e) => setLogForm((current: any) => ({ ...current, flow: e.target.value }))}><option>Light</option><option>Moderate</option><option>Heavy</option></select></label></div><button className="primary-button full-width" type="submit"><Plus size={17} /> Save health entry</button></form><div className="log-side"><div className="panel mini-calendar"><div className="panel-heading"><div><div className="eyebrow">September 2026</div><h3>Cycle map</h3></div><CalendarDays size={19} className="gold-icon" /></div><div className="calendar-week"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div><div className="calendar-grid">{Array.from({ length: 30 }, (_, index) => <span key={index} className={`${index + 1 === 23 ? "today" : ""} ${index + 1 >= 20 && index + 1 <= 26 ? "luteal" : ""}`}>{index + 1}</span>)}</div><div className="calendar-key"><span><i className="dot berry-dot" /> Current phase</span><span><i className="dot today-dot" /> Today</span></div></div><div className="panel tracking-tip"><div className="tip-icon"><Sparkles size={17} /></div><div><strong>Small data, big picture</strong><p>One entry takes less than a minute. Regular check-ins help your trends feel more personal.</p></div></div></div></div>
