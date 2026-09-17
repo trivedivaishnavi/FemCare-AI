@@ -17,6 +17,7 @@ import {
   Info,
   LayoutDashboard,
   Leaf,
+  LogOut,
   Menu,
   Moon,
   MoreHorizontal,
@@ -249,7 +250,7 @@ function indiaDateInputValue(date: Date) {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
-export default function Home() {
+export default function Home({ onLogout }: { onLogout: () => void }) {
   const [activePage, setActivePage] = useState("dashboard");
   const [mobileNav, setMobileNav] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
@@ -337,6 +338,7 @@ export default function Home() {
         <div className="sidebar-spacer" />
         <div className="sidebar-note"><div className="note-icon"><ShieldCheck size={17} /></div><div><strong>Your data stays yours</strong><p>Prototype data is stored locally in this browser.</p></div></div>
         <button className="profile-card" onClick={() => showSaved("Profile settings are ready for your next iteration")}><div className="avatar">VT</div><div className="profile-copy"><strong>Vaishnavi Trivedi</strong><span>Personal workspace</span></div><MoreHorizontal size={18} /></button>
+        <button className="logout-button" onClick={onLogout}><LogOut size={14} /> Log out</button>
       </aside>
 
       <main className="main-area">

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
-import { getLocalAccount } from "@/lib/auth";
+import { clearLocalAccount, getLocalAccount } from "@/lib/auth";
 
 const SESSION_KEY = "femcare-login-email";
 
@@ -17,5 +17,10 @@ export default function App() {
     setEmail(nextEmail);
   }
 
-  return email ? <Home /> : <Login onLogin={handleLogin} />;
+  function handleLogout() {
+    clearLocalAccount();
+    setEmail(null);
+  }
+
+  return email ? <Home onLogout={handleLogout} /> : <Login onLogin={handleLogin} />;
 }
