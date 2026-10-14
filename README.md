@@ -1,187 +1,223 @@
 # FemCare AI
 
-**An interactive women’s health application for menstrual cycle tracking, symptom insights, and explainable PCOS risk awareness.**
+### Your health, understood.
 
-FemCare AI helps users explore menstrual health patterns and organize information for conversations with healthcare professionals. The application combines cycle forecasting, symptom logging, wellness guidance, and printable appointment summaries in one interface.
+FemCare AI brings cycle tracking, symptom check-ins, and health-pattern awareness into one personal workspace. It helps users keep a clearer record of how they feel, explore their cycle history, and prepare a useful summary for a healthcare appointment.
 
-> FemCare AI is an educational prototype for awareness and decision support. It does not provide medical diagnoses or replace professional healthcare advice.
+[Explore the live app](https://fem-care-ai-dun.vercel.app/) · [Getting started](#getting-started) · [How it works](#how-it-works)
 
-## Features
+![FemCare AI welcome and account screen](femcare-welcome.png)
 
-### Cycle and Symptom Tracking
+> FemCare AI is an educational prototype. Its scores and forecasts are illustrative, have not been clinically validated, and cannot diagnose or rule out PCOS.
 
-Record menstrual cycle information and symptoms during the current session.
+## What you can do
 
-### Health Timeline
+| Feature | What it offers |
+| --- | --- |
+| Personal workspace | Create a local account and return to records saved in the same browser. |
+| Cycle and symptom logging | Record cycle length, date, symptoms, mood, sleep, exercise, and flow. |
+| Health timeline | Review previous check-ins and their details. |
+| PCOS awareness | Explore a rule-based score and its main contributing input groups. |
+| Cycle forecasting | Estimate the next cycle length from up to six recent entries. |
+| Talk to Siya | Use a contextual companion with predefined responses for common topics. |
+| Nutrition and mood | Browse wellness suggestions, meal ideas, and movement options. |
+| Appointment summary | Print logged patterns and questions to discuss with a clinician. |
 
-Review logged information chronologically to explore patterns over time.
+The interface includes responsive navigation, charts, a dark-mode toggle, and an India-time greeting and date display.
 
-### PCOS Risk Awareness
+## A typical journey
 
-Explore an illustrative estimate based on menstrual patterns, reported symptoms, lifestyle factors, and family history.
-
-### Explainable Insights
-
-View individual factor contributions to understand how inputs influence the displayed estimate.
-
-### Cycle Forecasting
-
-Explore upcoming cycle estimates using a weighted forecasting approach.
-
-### Nutrition and Mood Guidance
-
-Access general wellness information related to nutrition and mood.
-
-### Appointment Summary
-
-Generate a printable summary to support conversations with a healthcare professional.
-
-## Technology Stack
-
-### Application Development
-
-The project uses **React 19** and **TypeScript 5.6**, with **Vite 7** for frontend development and production builds.
-
-### Styling and Interface Libraries
-
-The project includes **Tailwind CSS 4**, **Radix UI**, **Lucide React**, and **Framer Motion** for styling, interface components, icons, and animation support.
-
-### Visualization and Date Selection
-
-**Recharts** and **React Day Picker** are included for charting and calendar components.
-
-### Forms and Validation
-
-**React Hook Form**, **Zod**, and **Hookform Resolvers** support form handling and schema validation.
-
-### Routing
-
-**Wouter** is included for client side navigation.
-
-### Server Infrastructure
-
-The production build bundles an **Express** server entry point with **esbuild** for execution in **Node.js**.
-
-### Development Tools
-
-**pnpm** manages dependencies, **Prettier** formats source files, and **TypeScript** provides static checks. **Vitest** is included as a testing dependency.
-
-## Getting Started
-
-### Prerequisites
-
-Install a Node.js version compatible with Vite 7 and the pnpm version declared in `package.json`.
-
-### Installation
-
-Clone the repository and install dependencies:
-
-```bash
-git clone https://github.com/trivedivaishnavi/FemCare-AI.git
-cd FemCare-AI
-pnpm install
+```mermaid
+flowchart LR
+    A[Create a local account] --> B[Log a cycle and symptoms]
+    B --> C[Review dashboard and timeline]
+    C --> D[Explore awareness factors]
+    D --> E[View cycle forecast]
+    E --> F[Print appointment summary]
+    C --> G[Talk to Siya]
+    C --> H[Explore wellness ideas]
 ```
 
-### Local Development
+Start with a cycle check-in. The app saves it to the account's timeline and uses selected fields to update the awareness inputs. Users can then review a forecast, adjust their assessment, or open their health summary.
 
-Start the Vite development server:
+**“Share with doctor” opens the browser's print dialog.** Users can print or choose Save as PDF where supported; the app does not send a report to a doctor.
+
+## How it works
+
+### Application architecture
+
+```mermaid
+flowchart TD
+    A[React and TypeScript interface] --> B[Local account access]
+    A --> C[Cycle logs and assessment forms]
+    C --> D[Rule-based awareness calculation]
+    C --> E[Weighted cycle forecast]
+    A --> F[Siya response templates]
+    D --> G[Charts and health summary]
+    E --> G
+    B <--> H[Browser localStorage]
+    C <--> H
+    F <--> H
+    I[Vite production build] --> J[Static frontend]
+    K[Express server] --> J
+```
+
+The main features run in the browser. The included Express server serves the built frontend and provides a fallback for client-side routes. It does not implement a health-data API, authentication service, or model inference endpoint.
+
+### Awareness score
+
+[`personalization.ts`](client/src/lib/personalization.ts) calculates the score using explicit rules for cycle regularity, physical symptoms, sleep and stress, diet and movement, family history, and optional lab inputs.
+
+```mermaid
+flowchart LR
+    A[Self-reported inputs] --> B[Add points using fixed rules]
+    B --> C[Cap score between 0 and 100]
+    C --> D[Low / Moderate / High / Very High]
+    B --> E[Rank factor-group contributions]
+    E --> F[Show top four groups]
+```
+
+The score is a bounded point total, not a calibrated probability of PCOS, although the interface displays it as a percentage. Optional positive lab values currently add fixed points without clinical threshold interpretation. Pattern labels are heuristic UI summaries rather than medically established diagnoses.
+
+### Cycle forecast
+
+The forecast uses up to six entries in logging order, with increasing weight for newer entries:
+
+```text
+Estimated cycle length = round(sum(cycle length × weight) / sum(weights))
+Weights = 1, 2, ..., number of available entries
+```
+
+With no entries, it uses a 28-day fallback. It flags variation when the standard deviation around the rounded forecast exceeds 3.5 days. This is a weighted estimate, not a trained forecasting model. Entries are not automatically sorted by their recorded dates before calculation.
+
+### Siya companion
+
+Siya uses keyword matching and predefined responses, with context such as the user's name and recent check-in. Chat history is stored in the browser. A companion prompt template exists in the repository, but the current chat does not call an external language model API.
+
+## Data and privacy
+
+Accounts, session identifiers, logs, assessment inputs, risk summaries, chat history, and movement preferences are stored in browser `localStorage`. Health entries use keys scoped to the local account ID.
+
+| Item | Current behavior |
+| --- | --- |
+| Accounts | Local to the device/browser; no cloud account service. |
+| Password checks | Salted PBKDF2-SHA-256 verifier with 120,000 iterations, calculated using Web Crypto. |
+| Health logs and chat | Persist across refreshes; not encrypted by the application. |
+| Cross-device access | Not implemented. |
+| Logout | Removes session keys; saved accounts and health records remain. |
+| Clearing site data | Removes saved records; no server backup. |
+
+The password verifier is a hash-derived value, not encryption of health data. Local account access is a prototype convenience, not production-grade protection for sensitive records. Use fictional information when exploring the public demo.
+
+The development configuration includes browser-console, network, and session-event logging hooks that write submitted payloads to `.manus-logs/`. The normal production build omits the injected debug collector script. Review these development hooks before testing with sensitive information.
+
+## Technology stack
+
+| Area | Tools |
+| --- | --- |
+| Frontend | React 19, TypeScript 5.6, Vite 7 |
+| Styling and components | Tailwind CSS 4, Radix UI, Lucide React |
+| Charts | Recharts |
+| Local password verification | Browser Web Crypto API |
+| Production server | Express 4, Node.js, esbuild |
+| Development | pnpm, Prettier, TypeScript checks |
+
+Other dependencies include form, animation, calendar, routing, and testing libraries. Not every installed package is used by the active screens.
+
+## Project structure
+
+```text
+FemCare-AI/
+├── client/
+│   ├── index.html
+│   └── src/
+│       ├── App.tsx                 # Local account access and app entry
+│       ├── main.tsx                # React bootstrap
+│       ├── index.css               # Application styling
+│       ├── pages/
+│       │   ├── Login.tsx           # Local account creation and sign-in
+│       │   ├── Home.tsx            # Dashboard and feature screens
+│       │   └── NotFound.tsx
+│       ├── lib/
+│       │   ├── auth.ts             # Local accounts and password verifier
+│       │   ├── personalization.ts  # Awareness rules and companion prompt
+│       │   └── utils.ts
+│       ├── components/            # Shared interface components
+│       ├── contexts/
+│       └── hooks/
+├── server/index.ts                # Static production server
+├── shared/                        # Shared constants
+├── patches/                       # Patched dependency files
+├── package.json
+├── pnpm-lock.yaml
+├── vite.config.ts
+└── README.md
+```
+
+## Getting started
+
+Use Node.js compatible with Vite 7 and **pnpm 10.4.1**, as declared in `package.json`. The default branch is `finalized-femcare-ai`.
 
 ```bash
+git clone --branch finalized-femcare-ai https://github.com/trivedivaishnavi/FemCare-AI.git
+cd FemCare-AI
+pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open the local URL displayed in the terminal.
+Open the address printed in the terminal. Development starts on port 3000 and can select another available port. Use localhost or HTTPS for the Web Crypto account functions.
 
-### Production Build
+The core browser features do not require an external AI key or database connection. Optional storage-proxy infrastructure in the development configuration is separate from the local health-tracking workflow.
 
-Build the frontend and bundle the server:
+### Useful commands
 
-```bash
-pnpm build
-```
+| Command | Purpose |
+| --- | --- |
+| `pnpm dev` | Start the Vite development server. |
+| `pnpm check` | Run TypeScript checks. |
+| `pnpm build` | Build the frontend and bundle the Express server. |
+| `pnpm preview` | Preview the built frontend locally. |
+| `pnpm start` | Start the production Express server on POSIX shells. |
+| `pnpm format` | Format source files with Prettier. |
 
-Start the production server:
-
-```bash
-pnpm start
-```
-
-The `start` script uses POSIX environment variable syntax. In Windows PowerShell, run:
+For a production start in Windows PowerShell, run `pnpm build` first, then:
 
 ```powershell
 $env:NODE_ENV = "production"
 node dist/index.js
 ```
 
-### Additional Commands
+Frontend output is `dist/public/`; the server bundle is `dist/index.js`. The server uses `PORT`, defaulting to 3000.
 
-Check TypeScript types:
+## Understanding the model comparison
 
-```bash
-pnpm check
-```
+The interface contains a fixed demonstration table:
 
-Preview the frontend build:
+| Metric | Logistic Regression | Random Forest |
+| --- | ---: | ---: |
+| Accuracy | 84% | 89% |
+| Precision | 81% | 87% |
+| Recall | 78% | 86% |
+| F1 score | 79% | 86% |
+| ROC AUC | 0.88 | 0.93 |
 
-```bash
-pnpm preview
-```
+These values are hardcoded in `Home.tsx`. The inspected branch has no reproducible training pipeline, persisted classifier, or the previously described 420-record generated dataset. The live score comes from `calculateRisk`. Treat this table as demonstration content, not measured or clinical performance.
 
-Format source files:
+## Current boundaries
 
-```bash
-pnpm format
-```
+- Some trends, phase cards, and narrative text are fixed examples or fallback values rather than being fully derived from user logs.
+- Forecasts depend on entry order. Backdated entries can affect the estimate.
+- Awareness rules and pattern labels need clinical review; no clinical validation is included.
+- The companion follows predefined branches rather than open-ended model reasoning.
+- Browser storage provides persistence on one device without cloud backup or encrypted health records.
+- Vitest is listed as a dependency, but this branch has no dedicated test script or automated test suite.
 
-## How It Works
+This README was checked against source files and the live welcome screen. A clean installation, production build, and full account workflow were not executed during this update.
 
-Live risk awareness estimates are calculated in the browser using deterministic feature contributions. The interface shows the contributions of individual factors to make the calculation understandable.
+## Where the project can go next
 
-The model comparison displayed in the application is separate from the live estimation logic. Live estimates are not predictions from a deployed Random Forest model.
+Useful next steps include replacing example charts with logged data, validating and sorting entries before forecasting, and testing scoring and persistence. A reproducible research workflow could compare trained models with simple baselines, keeping evaluation separate from the educational UI. Real health-data use would also need appropriate authentication, storage protections, and professional review.
 
-Logs are held in React memory for the current session. Refreshing the page may clear this information.
+## License
 
-## Demonstration Dataset
-
-FemCare AI uses seeded synthetic data generated in the browser. The reproducible dataset contains **420 synthetic records** covering:
-
-1. Age and BMI
-2. Cycle length and regularity
-3. Hirsutism and acne
-4. Weight gain and hair loss
-5. Skin darkening
-6. Fast food intake and exercise
-7. Family history of PCOS
-8. Left and right ovarian follicle counts
-
-These records support educational exploration and do not represent a real patient cohort.
-
-## Model Comparison
-
-The interface presents a demonstration comparison between **Logistic Regression** and **Random Forest**, representing an **80/20 training and evaluation split**.
-
-Random Forest is displayed as the selected model, with a **ROC AUC of 0.93** and an **F1 score of 0.86**.
-
-These displayed metrics describe the synthetic data demonstration. They do not establish clinical accuracy or validation on real patient data.
-
-## Current Limitations
-
-The application has not been clinically validated. Synthetic data cannot establish performance across real patient populations.
-
-Risk awareness estimates cannot diagnose, confirm, or exclude PCOS. Cycle forecasts are approximate and may be less reliable for irregular cycles.
-
-Logs are session based and do not provide persistent storage.
-
-## Future Development
-
-1. Create a reproducible Python workflow for training and evaluation.
-2. Train and compare Logistic Regression and Random Forest models.
-3. Report accuracy, precision, recall, F1, and ROC AUC from reproducible evaluation runs.
-4. Integrate a persisted model through a backend service.
-5. Add SHAP explanations for trained model predictions.
-6. Introduce persistent logging with appropriate privacy and security controls.
-7. Evaluate the application with appropriately sourced data and healthcare professional input.
-
-## Responsible Use
-
-FemCare AI is intended for education and demonstration. Consult a qualified healthcare professional for concerns about menstrual health, symptoms, or PCOS.
+`package.json` declares MIT. A standalone license file is not included in the inspected branch.
